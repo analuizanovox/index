@@ -469,13 +469,7 @@
         <h1>Compras &amp; parcelas</h1>
         <div class="subtitle">Registre suas próprias compras, à vista ou parceladas</div>
       </div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <label class="btn ghost" style="cursor:pointer; margin:0;">
-          📥 Importar lançamentos
-          <input type="file" accept="application/json,application/pdf" onchange="importarLancamentos(event)" style="display:none;">
-        </label>
-        <button class="btn" onclick="abrirNovaCompra()">+ Nova compra</button>
-      </div>
+      <button class="btn" onclick="abrirNovaCompra()">+ Nova compra</button>
     </header>
 
     <div class="panel" id="form-compra" style="display:none;">
@@ -506,17 +500,18 @@
       </div>
     </div>
 
-    <div class="panel" id="painel-revisao-importacao" style="display:none;">
-      <h2>Revisar itens da fatura importada</h2>
-      <div class="subtitle" style="margin-bottom:14px;">Identificamos os itens abaixo automaticamente — confira, ajuste o que precisar e desmarque o que não for compra antes de confirmar.</div>
+    <div class="panel">
+      <h2>Lançar fatura antiga (retroativa)</h2>
+      <div class="subtitle" style="margin-bottom:14px;">Pra registrar faturas de meses passados sem detalhar item por item — só o valor total, separando o que foi emprestado a alguém.</div>
       <div class="form-grid">
-        <div><label>Cartão desta fatura</label><select id="rev-cartao"></select></div>
-        <div><label>Mês/ano da fatura</label><input id="rev-mes-fatura" type="month"></div>
+        <div><label>Cartão</label><select id="fa-cartao"></select></div>
+        <div><label>Mês/ano da fatura</label><input id="fa-mes" type="month"></div>
+        <div><label>Valor total da fatura (R$)</label><input id="fa-total" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Valor emprestado (opcional, dentro do total acima)</label><input id="fa-emprestado" type="number" step="0.01" placeholder="0,00" oninput="toggleCampoPessoaFaturaAntiga()"></div>
+        <div id="fa-campo-pessoa" style="display:none;"><label>Nome da pessoa</label><input id="fa-pessoa" placeholder="Ex: Maria, João..."></div>
       </div>
-      <div id="rev-linhas" style="margin-top:16px;"></div>
       <div class="form-actions">
-        <button class="btn" onclick="confirmarImportacaoRevisao()">Confirmar importação selecionados</button>
-        <button class="btn ghost" onclick="cancelarRevisaoImportacao()">Cancelar</button>
+        <button class="btn" onclick="salvarFaturaAntiga()">Lançar</button>
       </div>
     </div>
 
@@ -759,7 +754,6 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script>
 /* ---------------- Estado / persistência ---------------- */
@@ -985,297 +979,68 @@ function importarBackup(event){
   reader.readAsText(file);
 }
 
-function importarLancamentos(event){
-  const file = event.target.files[0];
-  if(!file) return;
-
-  const nome = file.name.toLowerCase();
-  if(nome.endsWith('.pdf') || file.type === 'application/pdf'){
-    importarFaturaPDF(file, event);
-  } else {
-    importarLancamentosJSON(file, event);
-  }
+function toggleCampoPessoaFaturaAntiga(){
+  const valor = parseFloat(document.getElementById('fa-emprestado').value) || 0;
+  document.getElementById('fa-campo-pessoa').style.display = valor > 0 ? 'block' : 'none';
 }
 
-function importarLancamentosJSON(file, event){
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const dados = JSON.parse(e.target.result);
-      if(!Array.isArray(dados)){
-        alert('Este arquivo precisa conter uma lista de lançamentos (formato de fatura importada).');
-        event.target.value = '';
-        return;
-      }
+function salvarFaturaAntiga(){
+  const cardId = document.getElementById('fa-cartao').value;
+  const mes = document.getElementById('fa-mes').value;
+  const total = parseFloat(document.getElementById('fa-total').value);
+  const emprestado = parseFloat(document.getElementById('fa-emprestado').value) || 0;
+  const pessoa = document.getElementById('fa-pessoa').value.trim();
 
-      let adicionados = 0;
-      let semCartao = 0;
-
-      dados.forEach(item=>{
-        const valor = parseFloat(item.valor);
-        if(!valor) return;
-
-        let forma = item.forma || (item.cartao ? 'credito' : 'debito');
-        let cardId = null;
-        if(forma === 'credito' && item.cartao){
-          const c = cartoes.find(c => c.nome.toLowerCase() === String(item.cartao).toLowerCase());
-          if(c){
-            cardId = c.id;
-          } else {
-            semCartao++;
-            forma = 'debito';
-          }
-        }
-
-        const dataCompra = item.dataCompra || new Date().toISOString().slice(0,10);
-        const data = item.data || dataCompra.slice(0,7);
-
-        compras.push({
-          id: uid(),
-          cardId,
-          forma,
-          desc: item.descricao || item.desc || 'Sem descrição',
-          categoria: item.categoria || 'Outro',
-          valor,
-          parcelas: parseInt(item.parcelas) || 1,
-          data,
-          dataCompra
-        });
-        adicionados++;
-      });
-
-      DB.set('ffin_compras', compras);
-      renderCompras();
-      renderDashboard();
-
-      let msg = `${adicionados} lançamento(s) importado(s) com sucesso!`;
-      if(semCartao > 0){
-        msg += `\n\nAtenção: ${semCartao} item(ns) citavam um cartão que não foi encontrado no seu cadastro — foram lançados como Débito/Pix. Você pode editar cada um e associar ao cartão certo.`;
-      }
-      alert(msg);
-    } catch(err){
-      alert('Não foi possível ler o arquivo. Verifique se ele está no formato correto.');
-    }
-    event.target.value = '';
-  };
-  reader.readAsText(file);
-}
-
-/* ---------------- Importar fatura em PDF ---------------- */
-if(typeof pdfjsLib !== 'undefined'){
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-
-async function extrairTextoPDF(file){
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  let linhasTotais = [];
-
-  for(let p = 1; p <= pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const conteudo = await page.getTextContent();
-
-    // agrupa itens por posição vertical (y) pra reconstruir as linhas do PDF
-    const porLinha = {};
-    conteudo.items.forEach(item=>{
-      const y = Math.round(item.transform[5]);
-      if(!porLinha[y]) porLinha[y] = [];
-      porLinha[y].push(item);
-    });
-
-    const ys = Object.keys(porLinha).map(Number).sort((a,b)=> b - a);
-    ys.forEach(y=>{
-      const linha = porLinha[y].sort((a,b)=> a.transform[4] - b.transform[4]).map(i=>i.str).join(' ');
-      linhasTotais.push(linha);
-    });
-  }
-  return linhasTotais.join('\n');
-}
-
-function parseLinhasFatura(texto){
-  const linhas = texto.split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean);
-  const regexValor = /(-?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2})\s*$/;
-  const regexData = /^(\d{2}\/\d{2}(?:\/\d{2,4})?)\s+(.*)$/;
-  const resultado = [];
-
-  linhas.forEach(linha=>{
-    const mValor = linha.match(regexValor);
-    if(!mValor) return;
-
-    const valorStr = mValor[1].replace(/[R$\s]/g,'');
-    const valorNum = parseFloat(valorStr.replace(/\./g,'').replace(',','.'));
-    if(!valorNum || isNaN(valorNum) || valorNum <= 0) return;
-
-    let resto = linha.slice(0, mValor.index).trim();
-    let dataDetectada = '';
-    const mData = resto.match(regexData);
-    if(mData){
-      dataDetectada = mData[1];
-      resto = mData[2].trim();
-    }
-
-    let desc = resto;
-    let parcelaAtual = 1, parcelasTotais = 1;
-    const mParc = desc.match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/);
-    if(mParc){
-      const atual = parseInt(mParc[1]);
-      const total = parseInt(mParc[2]);
-      if(total >= atual && total <= 48){
-        parcelaAtual = atual;
-        parcelasTotais = total;
-        desc = (desc.slice(0, mParc.index) + desc.slice(mParc.index + mParc[0].length)).trim();
-      }
-    }
-
-    desc = desc.replace(/\s{2,}/g,' ').trim();
-    if(!/[A-Za-zÀ-ÿ]/.test(desc) || desc.length < 2) return;
-
-    resultado.push({ desc, valor: valorNum, parcelaAtual, parcelasTotais, dataDetectada });
-  });
-
-  return resultado;
-}
-
-let itensRevisaoImportacao = [];
-
-async function importarFaturaPDF(file, event){
-  if(typeof pdfjsLib === 'undefined'){
-    alert('Não foi possível carregar o leitor de PDF. Verifique sua conexão e recarregue a página.');
-    if(event) event.target.value = '';
-    return;
-  }
-  try{
-    const texto = await extrairTextoPDF(file);
-    const itens = parseLinhasFatura(texto);
-    if(itens.length === 0){
-      alert('Não conseguimos identificar compras automaticamente nesse PDF. O formato dessa fatura pode ser diferente do esperado — você pode lançar manualmente pela aba Compras.');
-      if(event) event.target.value = '';
-      return;
-    }
-    itensRevisaoImportacao = itens;
-    abrirRevisaoImportacao();
-  } catch(err){
-    console.error(err);
-    alert('Não foi possível ler esse PDF. Ele pode estar protegido por senha ou ser uma imagem escaneada (sem texto selecionável).');
-  }
-  if(event) event.target.value = '';
-}
-
-function toggleDestinoLinha(select){
-  const linha = select.closest('.ticket');
-  const campoPessoa = linha.querySelector('.rev-campo-pessoa');
-  campoPessoa.style.display = (select.value === 'emprestimo') ? 'block' : 'none';
-}
-
-function abrirRevisaoImportacao(){
-  const cartaoSelect = document.getElementById('rev-cartao');
-  cartaoSelect.innerHTML = cartoes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('') || '<option value="">Cadastre um cartão primeiro</option>';
-  document.getElementById('rev-mes-fatura').value = getMesAtual();
-
-  const categoriasOpts = [...categoriasGasto, 'Outro'].map(c=>`<option value="${c}">${c}</option>`).join('');
-
-  const el = document.getElementById('rev-linhas');
-  el.innerHTML = itensRevisaoImportacao.map((item, i)=>`
-    <div class="ticket" data-idx="${i}" style="flex-wrap:wrap;">
-      <div style="display:flex; align-items:center; padding-right:6px;">
-        <input type="checkbox" class="rev-incluir" checked style="width:18px; height:18px;">
-      </div>
-      <div class="col">
-        <input class="rev-desc" value="${item.desc.replace(/"/g,'&quot;')}" style="margin-bottom:6px;">
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <select class="rev-categoria" style="max-width:160px;">${categoriasOpts}</select>
-          <input class="rev-parcela-atual" type="number" min="1" value="${item.parcelaAtual}" title="Parcela atual" style="max-width:90px;">
-          <span style="align-self:center; color:var(--muted);">de</span>
-          <input class="rev-parcelas-total" type="number" min="1" value="${item.parcelasTotais}" title="Total de parcelas" style="max-width:90px;">
-          <select class="rev-destino" style="max-width:170px;" onchange="toggleDestinoLinha(this)">
-            <option value="compra">Compra própria</option>
-            <option value="emprestimo">Empréstimo p/ outra pessoa</option>
-          </select>
-        </div>
-        <div class="rev-campo-pessoa" style="display:none; margin-top:8px;">
-          <input class="rev-pessoa" placeholder="Nome da pessoa">
-        </div>
-      </div>
-      <input class="rev-valor" type="number" step="0.01" value="${item.valor}" style="max-width:120px;">
-    </div>
-  `).join('');
-
-  document.getElementById('painel-revisao-importacao').style.display = 'block';
-  document.getElementById('painel-revisao-importacao').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function cancelarRevisaoImportacao(){
-  itensRevisaoImportacao = [];
-  document.getElementById('painel-revisao-importacao').style.display = 'none';
-}
-
-function confirmarImportacaoRevisao(){
-  const cardId = document.getElementById('rev-cartao').value;
-  const mesFatura = document.getElementById('rev-mes-fatura').value || getMesAtual();
   if(!cardId){ alert('Selecione o cartão dessa fatura.'); return; }
+  if(!mes){ alert('Selecione o mês/ano da fatura.'); return; }
+  if(!total){ alert('Preencha o valor total da fatura.'); return; }
+  if(emprestado > total){ alert('O valor emprestado não pode ser maior que o total da fatura.'); return; }
+  if(emprestado > 0 && !pessoa){ alert('Preencha o nome da pessoa pra quem foi emprestado.'); return; }
 
-  const linhas = document.querySelectorAll('#rev-linhas > .ticket');
-  let adicionadosCompras = 0;
-  let adicionadosEmprestimos = 0;
-  let semNomePessoa = 0;
+  const valorProprio = total - emprestado;
+  let lancamentos = 0;
 
-  linhas.forEach(linha=>{
-    const incluir = linha.querySelector('.rev-incluir').checked;
-    if(!incluir) return;
+  if(valorProprio > 0){
+    compras.push({
+      id: uid(),
+      cardId,
+      forma: 'credito',
+      desc: 'Fatura antiga',
+      categoria: 'Outro',
+      valor: valorProprio,
+      parcelas: 1,
+      data: mes,
+      dataCompra: mes + '-01'
+    });
+    lancamentos++;
+  }
 
-    const desc = linha.querySelector('.rev-desc').value.trim();
-    const categoria = linha.querySelector('.rev-categoria').value;
-    const valor = parseFloat(linha.querySelector('.rev-valor').value);
-    const parcelaAtual = parseInt(linha.querySelector('.rev-parcela-atual').value) || 1;
-    const parcelasTotais = parseInt(linha.querySelector('.rev-parcelas-total').value) || 1;
-    const destino = linha.querySelector('.rev-destino').value;
-    if(!desc || !valor) return;
-
-    // calcula o mês da 1ª parcela subtraindo as parcelas já "vencidas" do mês da fatura
-    const data = somarMeses(mesFatura, -(parcelaAtual - 1));
-
-    if(destino === 'emprestimo'){
-      const pessoa = linha.querySelector('.rev-pessoa').value.trim();
-      if(!pessoa){ semNomePessoa++; return; }
-      emprestimos.push({
-        id: uid(),
-        cardId,
-        pessoa,
-        desc,
-        valor,
-        parcelas: parcelasTotais,
-        data,
-        pagas: []
-      });
-      adicionadosEmprestimos++;
-    } else {
-      compras.push({
-        id: uid(),
-        cardId,
-        forma: 'credito',
-        desc,
-        categoria,
-        valor,
-        parcelas: parcelasTotais,
-        data,
-        dataCompra: data + '-01'
-      });
-      adicionadosCompras++;
-    }
-  });
+  if(emprestado > 0){
+    emprestimos.push({
+      id: uid(),
+      cardId,
+      pessoa,
+      desc: 'Fatura antiga',
+      valor: emprestado,
+      parcelas: 1,
+      data: mes,
+      pagas: []
+    });
+    lancamentos++;
+  }
 
   DB.set('ffin_compras', compras);
   DB.set('ffin_emprestimos', emprestimos);
   renderCompras();
   renderEmprestimos();
   renderDashboard();
-  cancelarRevisaoImportacao();
 
-  let msg = `${adicionadosCompras} compra(s) e ${adicionadosEmprestimos} empréstimo(s) importado(s) com sucesso!`;
-  if(semNomePessoa > 0){
-    msg += `\n\nAtenção: ${semNomePessoa} item(ns) marcados como empréstimo ficaram de fora por falta do nome da pessoa. Preencha o nome e confirme de novo, se quiser incluí-los.`;
-  }
-  alert(msg);
+  document.getElementById('fa-total').value = '';
+  document.getElementById('fa-emprestado').value = '';
+  document.getElementById('fa-pessoa').value = '';
+  toggleCampoPessoaFaturaAntiga();
+
+  alert('Fatura antiga lançada com sucesso!');
 }
 
 /* ---------------- Navegação ---------------- */
@@ -1338,6 +1103,7 @@ function popularSelectCartoes(){
   document.getElementById('p-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('e-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('d-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+  document.getElementById('fa-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
 }
 
 let editandoCartaoId = null;
