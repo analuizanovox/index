@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extrato — Controle Financeiro Pessoal</title>
+<style>
+  :root{
+    --bg: #f3f1ea;
+    --surface: #ffffff;
+    --surface-2: #eef0e9;
+    --line: #dcdcd3;
+    --ink: #23282a;
+    --muted: #6b7570;
+    --emerald: #1f8f74;
+    --emerald-dim: #d9f0e8;
+    --amber: #b9812e;
+    --coral: #c14f3a;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display:flex;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width: 230px;
+    min-width: 230px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 28px 18px;
+    display:flex;
+    flex-direction:column;
+    gap: 30px;
+  }
+  .brand{
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .brand span{ color: var(--emerald); }
+  .brand small{
+    display:block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  nav{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+  .nav-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 500;
+    text-align:left;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  .nav-btn:hover{ background: var(--surface-2); color: var(--ink); }
+  .nav-btn.active{ background: var(--emerald-dim); color: #0d4c3c; font-weight:600; }
+  .nav-btn .num{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    opacity: .6;
+  }
+  .nav-section-label{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    opacity: .7;
+    padding: 14px 12px 4px;
+  }
+  .nav-section-label:first-of-type{ padding-top: 8px; }
+  .sidebar-foot{
+    margin-top:auto;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height:1.6;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+  }
+
+  /* ---------- Main ---------- */
+  main{ flex:1; padding: 34px 42px; max-width: 1180px; }
+  .page{ display:none; animation: fade .25s ease; }
+  .page.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform: translateY(4px);} to{opacity:1; transform:none;} }
+
+  header.page-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom: 28px; flex-wrap: wrap; gap: 14px;
+  }
+  h1{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 30px;
+  }
+  .subtitle{ color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .btn{
+    background: var(--emerald);
+    color: #08211b;
+    border:none;
+    padding: 11px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor:pointer;
+    transition: filter .15s ease, transform .1s ease;
+  }
+  .btn:hover{ filter: brightness(1.08); }
+  .btn:active{ transform: scale(.98); }
+  .btn.ghost{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .btn.danger{ background: var(--coral); color:#2a0d06; }
+  .btn.small{ padding: 7px 12px; font-size: 12px; }
+
+  /* ---------- Cards / stat tiles ---------- */
+  .grid-stats{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+  .stat{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .stat::before{
+    content:'';
+    position:absolute; left:0; top:0; bottom:0; width:3px;
+    background: var(--accent, var(--emerald));
+  }
+  .stat .label{
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-weight:600;
+  }
+  .stat .value{
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .stat .hint{ font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- Panels & forms ---------- */
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+  .panel h2{
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+    gap: 14px;
+  }
+  label{
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight:600;
+    display:block;
+    margin-bottom: 6px;
+  }
+  input, select{
+    width:100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 10px 12px;
+    border-radius: 7px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+  }
+  input:focus, select:focus{ outline: 2px solid var(--emerald-dim); border-color: var(--emerald); }
+  .form-actions{ margin-top: 18px; display:flex; gap:10px; }
+
+  /* ---------- Ticket rows (signature element) ---------- */
+  .ticket{
+    display:flex;
+    align-items:center;
+    gap: 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-left: 3px dashed var(--emerald);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .ticket.pending{ border-left-color: var(--amber); }
+  .ticket.overdue{ border-left-color: var(--coral); }
+  .ticket .col{ flex:1; min-width: 0; }
+  .ticket .title{ font-weight:600; font-size: 14px; }
+  .ticket .meta{ font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .ticket .amount{
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .ticket .badge{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    white-space:nowrap;
+  }
+  .ticket .actions{ display:flex; gap:6px; }
+  .empty{
+    text-align:center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 30px 10px;
+    font-style: italic;
+  }
+
+  .card-color-dot{
+    width: 10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px;
+  }
+
+  .limit-bar{
+    width:100%; height:6px; background:var(--bg); border-radius:4px; overflow:hidden; margin-top:10px;
+    border: 1px solid var(--line);
+  }
+  .limit-bar-fill{ height:100%; border-radius:4px; transition: width .3s ease; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 4px; }
+
+  @media (max-width: 780px){
+    body{ flex-direction:column; }
+    .sidebar{ width:100%; flex-direction:row; align-items:center; padding: 14px 18px; overflow-x:auto; }
+    .brand{ display:none; }
+    nav{ flex-direction:row; }
+    .nav-section-label{ display:none; }
+    .sidebar-foot{ display:none; }
+    main{ padding: 22px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">Extrato<span>.</span><small>controle pessoal</small></div>
+  <nav>
+    <button class="nav-btn active" data-page="dashboard">📊 Visão geral</button>
+
+    <div class="nav-section-label">Cartões</div>
+    <button class="nav-btn" data-page="cartoes">💳 Cartões</button>
+    <button class="nav-btn" data-page="compras">🧾 Compras &amp; parcelas</button>
+    <button class="nav-btn" data-page="faturas">📑 Faturas por Cartão</button>
+    <button class="nav-btn" data-page="uber">🚗 Uber</button>
+    <button class="nav-btn" data-page="construir"><img id="logo-construir-nav" style="height:18px; vertical-align:middle; margin-right:2px; border-radius:3px;"> Gastos Construir</button>
+
+    <div class="nav-section-label">Pessoas &amp; metas</div>
+    <button class="nav-btn" data-page="emprestimos">🤝 Empréstimos a terceiros</button>
+    <button class="nav-btn" data-page="guardado">🐷 Dinheiro Guardado</button>
+    <button class="nav-btn" data-page="desejos">🎁 Lista de Desejos</button>
+
+    <div class="nav-section-label">Configurações</div>
+    <button class="nav-btn" data-page="categorias">🏷️ Tipos de Gasto</button>
+  </nav>
+  <div class="sidebar-foot">
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+      <button class="btn ghost small" style="width:100%;" onclick="exportarBackup()">⬇️ Exportar backup</button>
+      <label class="btn ghost small" style="width:100%; text-align:center; cursor:pointer; display:block; box-sizing:border-box;">
+        ⬆️ Importar backup
+        <input type="file" accept="application/json" onchange="importarBackup(event)" style="display:none;">
+      </label>
+    </div>
+    Os dados ficam salvos<br>apenas neste navegador<br>(localStorage). Faça backup regularmente.
+  </div>
+</aside>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+    <header class="page-head">
+      <div>
+        <h1>Visão geral</h1>
+        <div class="subtitle" id="dash-date"></div>
+      </div>
+    </header>
+
+    <div class="panel">
+      <h2>Lançar gasto rápido</h2>
+      <div class="form-grid">
+        <div>
+          <label>Forma de pagamento</label>
+          <select id="d-forma" onchange="toggleCamposDashboard()">
+            <option value="credito">Cartão de Crédito</option>
+            <option value="debito">Débito</option>
+            <option value="pix">Pix</option>
+          </select>
+        </div>
+        <div id="d-campo-cartao"><label>Cartão usado</label><select id="d-cartao"></select></div>
+        <div>
+          <label>Selecionar gasto</label>
+          <select id="d-categoria" onchange="toggleCamposDashboard()"></select>
+        </div>
+        <div><label>Valor total (R$)</label><input id="d-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Data da compra</label><input id="d-data-compra" type="date"></div>
+        <div id="d-campo-desc"><label>Descrição</label><input id="d-desc" placeholder="Ex: Notebook, mercado..."></div>
+        <div id="d-campo-parcelas"><label>Nº de parcelas</label><input id="d-parcelas" type="number" min="1" value="1"></div>
+        <div id="d-campo-data"><label>Mês da 1ª parcela</label><input id="d-data" type="month"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarGastoDashboard()">Lançar gasto</button>
+      </div>
+    </div>
+
+    <div style="max-width:220px; margin-bottom:24px;">
+      <label>Mês de referência</label>
+      <input type="month" id="dash-mes-selecionado" onchange="renderDashboard()">
+    </div>
+
+    <div class="grid-stats">
+      <div class="stat" style="--accent: var(--coral)">
+        <div class="label">Faturas do mês (suas compras)</div>
+        <div class="value" id="stat-mes">R$ 0,00</div>
+        <div class="hint">Soma das parcelas que vencem este mês</div>
+      </div>
+      <div class="stat" style="--accent: var(--amber)">
+        <div class="label">A receber de outras pessoas</div>
+        <div class="value" id="stat-receber">R$ 0,00</div>
+        <div class="hint">Parcelas de empréstimos ainda não pagas</div>
+      </div>
+      <div class="stat" style="--accent: var(--emerald)">
+        <div class="label">Limite total dos cartões</div>
+        <div class="value" id="stat-limite">R$ 0,00</div>
+        <div class="hint" id="stat-limite-hint">0 cartões cadastrados</div>
+      </div>
+      <div class="stat" style="--accent: #7aa6d1">
+        <div class="label">Dinheiro guardado</div>
+        <div class="value" id="stat-dash-guardado">R$ 0,00</div>
+        <div class="hint" id="stat-dash-guardado-hint">0 cofrinho(s)</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Gastos por cartão, divididos por tipo (mês selecionado)</h2>
+      <div id="charts-por-cartao" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:24px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Gastos por tipo (mês selecionado)</h2>
+      <div style="height:260px;"><canvas id="chart-categoria"></canvas></div>
+      <div id="legenda-categoria" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Fatura por cartão (mês selecionado)</h2>
+      <div id="dash-cartoes-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Empréstimos com parcela vencendo no mês selecionado</h2>
+      <div id="dash-emprestimos-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Gastos futuros (parcelas a vencer)</h2>
+      <div style="height:260px;"><canvas id="chart-futuro"></canvas></div>
+      <div class="subtitle" style="margin-top:10px;">Projeção a partir do mês selecionado, considerando as parcelas já cadastradas</div>
+    </div>
+  </section>
+
+  <!-- CARTÕES -->
+  <section class="page" id="page-cartoes">
+    <header class="page-head">
+      <div>
+        <h1>Cartões</h1>
+        <div class="subtitle">Cadastre seus cartões de crédito</div>
+      </div>
+      <button class="btn" onclick="abrirNovoCartao()">+ Novo cartão</button>
+    </header>
+
+    <div class="panel" id="form-cartao" style="display:none;">
+      <h2 id="form-cartao-titulo">Novo cartão</h2>
+      <div class="form-grid">
+        <div><label>Nome do cartão</label><input id="c-nome" placeholder="Ex: Nubank Roxinho"></div>
+        <div><label>Banco / bandeira</label><input id="c-banco" placeholder="Ex: Nubank, Itaú, Visa..."></div>
+        <div><label>Limite total (R$)</label><input id="c-limite" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Dia de fechamento</label><input id="c-fechamento" type="number" min="1" max="31" placeholder="Ex: 10"></div>
+        <div><label>Dia de vencimento</label><input id="c-vencimento" type="number" min="1" max="31" placeholder="Ex: 17"></div>
+        <div>
+          <label>Cor de identificação</label>
+          <input id="c-cor" type="color" value="#2fa88a" style="height:40px; padding:4px;">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarCartao()">Salvar cartão</button>
+        <button class="btn ghost" onclick="cancelarFormCartao()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Meus cartões</h2>
+      <div id="lista-cartoes"></div>
+    </div>
+  </section>
+
+  <!-- COMPRAS -->
+  <section class="page" id="page-compras">
+    <header class="page-head">
+      <div>
+        <h1>Compras &amp; parcelas</h1>
+        <div class="subtitle">Registre suas próprias compras, à vista ou parceladas</div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <label class="btn ghost" style="cursor:pointer; margin:0;">
+          📥 Importar lançamentos
+          <input type="file" accept="application/json" onchange="importarLancamentos(event)" style="display:none;">
+        </label>
+        <button class="btn" onclick="abrirNovaCompra()">+ Nova compra</button>
+      </div>
+    </header>
+
+    <div class="panel" id="form-compra" style="display:none;">
+      <h2 id="form-compra-titulo">Nova compra</h2>
+      <div class="form-grid">
+        <div>
+          <label>Forma de pagamento</label>
+          <select id="p-forma" onchange="toggleCamposCompra()">
+            <option value="credito">Cartão de Crédito</option>
+            <option value="debito">Débito</option>
+            <option value="pix">Pix</option>
+          </select>
+        </div>
+        <div id="p-campo-cartao"><label>Cartão usado</label><select id="p-cartao"></select></div>
+        <div>
+          <label>Selecionar gasto</label>
+          <select id="p-categoria" onchange="toggleCamposCompra()"></select>
+        </div>
+        <div><label>Valor total (R$)</label><input id="p-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Data da compra</label><input id="p-data-compra" type="date"></div>
+        <div id="p-campo-desc"><label>Descrição</label><input id="p-desc" placeholder="Ex: Notebook, mercado..."></div>
+        <div id="p-campo-parcelas"><label>Nº de parcelas</label><input id="p-parcelas" type="number" min="1" value="1"></div>
+        <div id="p-campo-data"><label>Mês da 1ª parcela</label><input id="p-data" type="month"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarCompra()">Salvar compra</button>
+        <button class="btn ghost" onclick="cancelarFormCompra()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Compras registradas</h2>
+      <div id="lista-compras"></div>
+    </div>
+  </section>
+
+  <!-- FATURAS POR CARTÃO -->
+  <section class="page" id="page-faturas">
+    <header class="page-head">
+      <div>
+        <h1>Faturas por Cartão</h1>
+        <div class="subtitle">Cada cartão com seus próprios lançamentos, separado dos demais</div>
+      </div>
+    </header>
+
+    <div id="faturas-container"></div>
+  </section>
+
+  <!-- UBER -->
+  <section class="page" id="page-uber">
+    <header class="page-head">
+      <div>
+        <h1>Uber</h1>
+        <div class="subtitle">KNN, LAH e Outros juntos aqui (Construir tem aba própria)</div>
+      </div>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat" style="--accent: var(--emerald)">
+        <div class="label">Total em Uber (exceto Construir)</div>
+        <div class="value" id="stat-uber-total">R$ 0,00</div>
+        <div class="hint" id="stat-uber-hint">0 lançamento(s)</div>
+      </div>
+    </div>
+
+    <div id="uber-categorias-container"></div>
+  </section>
+
+  <!-- EMPRÉSTIMOS -->
+  <section class="page" id="page-emprestimos">
+    <header class="page-head">
+      <div>
+        <h1>Empréstimos a terceiros</h1>
+        <div class="subtitle">Quando você compra no seu cartão para outra pessoa te pagar depois</div>
+      </div>
+      <button class="btn" onclick="abrirNovoEmprestimo()">+ Novo empréstimo</button>
+    </header>
+
+    <div class="panel" id="form-emprestimo" style="display:none;">
+      <h2 id="form-emprestimo-titulo">Novo empréstimo de cartão</h2>
+      <div class="form-grid">
+        <div><label>Nome da pessoa</label><input id="e-pessoa" placeholder="Ex: Maria, João..."></div>
+        <div><label>Cartão usado</label><select id="e-cartao"></select></div>
+        <div><label>Descrição</label><input id="e-desc" placeholder="Ex: Passagem, celular..."></div>
+        <div><label>Valor total (R$)</label><input id="e-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Nº de parcelas</label><input id="e-parcelas" type="number" min="1" value="1"></div>
+        <div><label>Mês da 1ª parcela</label><input id="e-data" type="month"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarEmprestimo()">Salvar empréstimo</button>
+        <button class="btn ghost" onclick="cancelarFormEmprestimo()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Empréstimos ativos</h2>
+      <div id="lista-emprestimos"></div>
+    </div>
+  </section>
+
+  <!-- GASTOS CONSTRUIR -->
+  <section class="page" id="page-construir">
+    <header class="page-head">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <img id="logo-construir-header" style="height:56px; width:56px; object-fit:contain; border-radius:10px; background:#fff; padding:6px;">
+        <div>
+          <h1>Gastos Construir</h1>
+          <div class="subtitle">Todo gasto lançado como "Uber Construir" cai automaticamente aqui</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat" style="--accent: var(--emerald)">
+        <div class="label">Total em Uber Construir</div>
+        <div class="value" id="stat-construir-total">R$ 0,00</div>
+        <div class="hint" id="stat-construir-hint">0 lançamento(s)</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Lançamentos</h2>
+      <div id="lista-construir"></div>
+    </div>
+  </section>
+
+  <!-- DINHEIRO GUARDADO -->
+  <section class="page" id="page-guardado">
+    <header class="page-head">
+      <div>
+        <h1>Dinheiro Guardado</h1>
+        <div class="subtitle">Reservas, cofrinhos e metas de economia</div>
+      </div>
+      <button class="btn" onclick="abrirNovoCofre()">+ Novo cofrinho</button>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat" style="--accent: var(--emerald)">
+        <div class="label">Total guardado</div>
+        <div class="value" id="stat-guardado-total">R$ 0,00</div>
+        <div class="hint" id="stat-guardado-hint">0 cofrinho(s)</div>
+      </div>
+    </div>
+
+    <div class="panel" id="form-cofre" style="display:none;">
+      <h2 id="form-cofre-titulo">Novo cofrinho</h2>
+      <div class="form-grid">
+        <div><label>Nome do cofrinho</label><input id="cf-nome" placeholder="Ex: Reserva de emergência, Viagem..."></div>
+        <div><label>Meta (opcional, R$)</label><input id="cf-meta" type="number" step="0.01" placeholder="0,00"></div>
+        <div>
+          <label>Cor de identificação</label>
+          <input id="cf-cor" type="color" value="#2fa88a" style="height:40px; padding:4px;">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarCofre()">Salvar cofrinho</button>
+        <button class="btn ghost" onclick="cancelarFormCofre()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Movimentar dinheiro guardado</h2>
+      <div class="form-grid">
+        <div><label>Cofrinho</label><select id="mv-cofre"></select></div>
+        <div>
+          <label>Tipo</label>
+          <select id="mv-tipo">
+            <option value="deposito">Guardar (depósito)</option>
+            <option value="retirada">Retirar</option>
+          </select>
+        </div>
+        <div><label>Valor (R$)</label><input id="mv-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Descrição (opcional)</label><input id="mv-desc" placeholder="Ex: Sobra do mês, emergência..."></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarMovimentacao()">Lançar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Meus cofrinhos</h2>
+      <div id="lista-cofres"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Guardado por mês</h2>
+      <div style="height:260px;"><canvas id="chart-guardado-mes"></canvas></div>
+      <div class="subtitle" style="margin-top:10px;">Soma de depósitos menos retiradas em cada mês, considerando todos os cofrinhos</div>
+    </div>
+
+    <div class="panel">
+      <h2>Movimentações recentes</h2>
+      <div id="lista-movimentacoes"></div>
+    </div>
+  </section>
+
+  <!-- LISTA DE DESEJOS -->
+  <section class="page" id="page-desejos">
+    <header class="page-head">
+      <div>
+        <h1>Lista de Desejos</h1>
+        <div class="subtitle">Coisas que você quer comprar, com o link guardado</div>
+      </div>
+      <button class="btn" onclick="abrirNovoDesejo()">+ Novo item</button>
+    </header>
+
+    <div class="panel" id="form-desejo" style="display:none;">
+      <h2 id="form-desejo-titulo">Novo item</h2>
+      <div class="form-grid">
+        <div><label>Nome do item</label><input id="dj-nome" placeholder="Ex: Tênis, Fone de ouvido..."></div>
+        <div><label>Link</label><input id="dj-link" type="url" placeholder="https://..."></div>
+        <div><label>URL da imagem (opcional)</label><input id="dj-imagem" type="url" placeholder="https://... (link direto da foto)"></div>
+        <div><label>Valor estimado (R$)</label><input id="dj-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div>
+          <label>Prioridade</label>
+          <select id="dj-prioridade">
+            <option value="alta">Alta</option>
+            <option value="media" selected>Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarDesejo()">Salvar item</button>
+        <button class="btn ghost" onclick="cancelarFormDesejo()">Cancelar</button>
+      </div>
+      <div class="subtitle" style="margin-top:14px;">💡 Dica: no site do produto, clique com o botão direito na foto e escolha "Copiar endereço da imagem" — cole esse link aqui (não é o link da página, é o link da própria foto).</div>
+    </div>
+
+    <div class="panel">
+      <h2>Quero comprar</h2>
+      <div id="lista-desejos-pendentes"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Já comprei</h2>
+      <div id="lista-desejos-comprados"></div>
+    </div>
+  </section>
+
+  <!-- TIPOS DE GASTO -->
+  <section class="page" id="page-categorias">
+    <header class="page-head">
+      <div>
+        <h1>Tipos de Gasto</h1>
+        <div class="subtitle">Gerencie as opções que aparecem ao lançar um gasto rápido</div>
+      </div>
+    </header>
+
+    <div class="panel">
+      <h2>Novo tipo de gasto</h2>
+      <div class="form-grid">
+        <div><label>Nome</label><input id="tg-nome" placeholder="Ex: Farmácia, Assinatura, Lazer..."></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarTipoGasto()">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Tipos cadastrados</h2>
+      <div id="lista-categorias"></div>
+      <div class="subtitle" style="margin-top:14px;">🔒 Os tipos com cadeado alimentam abas próprias do app (Uber e Gastos Construir) e por isso não podem ser excluídos.</div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script>
+/* ---------------- Categorias de gasto ---------------- */
+const CATEGORIAS_PROTEGIDAS = ['Uber KNN','Uber LAH','Uber Outros','Uber Construir'];
+
+let categoriasGasto;
+if(localStorage.getItem('ffin_categorias') === null){
+  categoriasGasto = ['Uber KNN','Uber LAH','Uber Outros','Uber Construir','Comida Rua','Comida Casa','Roupa'];
+  localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+} else {
+  categoriasGasto = JSON.parse(localStorage.getItem('ffin_categorias')) || [];
+}
+
+function popularSelectsCategoria(){
+  const todas = [...categoriasGasto, 'Outro'];
+  const opts = todas.map(c=>`<option value="${c}">${c === 'Outro' ? 'Outro (compra normal)' : c}</option>`).join('');
+  document.getElementById('p-categoria').innerHTML = opts;
+  document.getElementById('d-categoria').innerHTML = opts;
+}
+/* ---------------- Estado / persistência ---------------- */
+const LOGO_CONSTRUIR = "data:image/png;base64,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";
+
+const DB = {
+  get(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } },
+  set(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+};
+
+let cartoes = DB.get('ffin_cartoes');
+let compras = DB.get('ffin_compras');
+let emprestimos = DB.get('ffin_emprestimos');
+let cofres = DB.get('ffin_cofres');
+let movimentacoesGuardado = DB.get('ffin_movs_guardado');
+let itensDesejo = DB.get('ffin_desejos');
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function brl(v){ return (v||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+
+/* ---------------- Backup (exportar / importar) ---------------- */
+function exportarBackup(){
+  const dados = {
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    cartoes, compras, emprestimos, cofres, movimentacoesGuardado, itensDesejo, categoriasGasto
+  };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const hoje = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `extrato-backup-${hoje}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importarBackup(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const dados = JSON.parse(e.target.result);
+      if(!dados || !Array.isArray(dados.cartoes) || !Array.isArray(dados.compras) || !Array.isArray(dados.emprestimos)){
+        alert('Este arquivo não parece ser um backup válido.');
+        event.target.value = '';
+        return;
+      }
+      if(!confirm('Importar este backup vai substituir todos os dados atuais deste navegador. Deseja continuar?')){
+        event.target.value = '';
+        return;
+      }
+
+      cartoes = dados.cartoes;
+      compras = dados.compras;
+      emprestimos = dados.emprestimos.map(e => ({ pagas: [], ...e }));
+      cofres = Array.isArray(dados.cofres) ? dados.cofres : [];
+      movimentacoesGuardado = Array.isArray(dados.movimentacoesGuardado) ? dados.movimentacoesGuardado : [];
+      itensDesejo = Array.isArray(dados.itensDesejo) ? dados.itensDesejo : [];
+      categoriasGasto = Array.isArray(dados.categoriasGasto) ? dados.categoriasGasto : categoriasGasto;
+      DB.set('ffin_cartoes', cartoes);
+      DB.set('ffin_compras', compras);
+      DB.set('ffin_emprestimos', emprestimos);
+      DB.set('ffin_cofres', cofres);
+      DB.set('ffin_movs_guardado', movimentacoesGuardado);
+      DB.set('ffin_desejos', itensDesejo);
+      localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+
+      renderCartoes();
+      renderCompras();
+      renderEmprestimos();
+      renderCofres();
+      renderMovimentacoes();
+      renderDesejos();
+      popularSelectsCategoria();
+      renderTiposGasto();
+      renderDashboard();
+      alert('Backup importado com sucesso!');
+    } catch(err){
+      alert('Não foi possível ler o arquivo. Verifique se é um backup válido.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function importarLancamentos(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const dados = JSON.parse(e.target.result);
+      if(!Array.isArray(dados)){
+        alert('Este arquivo precisa conter uma lista de lançamentos (formato de fatura importada).');
+        event.target.value = '';
+        return;
+      }
+
+      let adicionados = 0;
+      let semCartao = 0;
+
+      dados.forEach(item=>{
+        const valor = parseFloat(item.valor);
+        if(!valor) return;
+
+        let forma = item.forma || (item.cartao ? 'credito' : 'debito');
+        let cardId = null;
+        if(forma === 'credito' && item.cartao){
+          const c = cartoes.find(c => c.nome.toLowerCase() === String(item.cartao).toLowerCase());
+          if(c){
+            cardId = c.id;
+          } else {
+            semCartao++;
+            forma = 'debito';
+          }
+        }
+
+        const dataCompra = item.dataCompra || new Date().toISOString().slice(0,10);
+        const data = item.data || dataCompra.slice(0,7);
+
+        compras.push({
+          id: uid(),
+          cardId,
+          forma,
+          desc: item.descricao || item.desc || 'Sem descrição',
+          categoria: item.categoria || 'Outro',
+          valor,
+          parcelas: parseInt(item.parcelas) || 1,
+          data,
+          dataCompra
+        });
+        adicionados++;
+      });
+
+      DB.set('ffin_compras', compras);
+      renderCompras();
+      renderDashboard();
+
+      let msg = `${adicionados} lançamento(s) importado(s) com sucesso!`;
+      if(semCartao > 0){
+        msg += `\n\nAtenção: ${semCartao} item(ns) citavam um cartão que não foi encontrado no seu cadastro — foram lançados como Débito/Pix. Você pode editar cada um e associar ao cartão certo.`;
+      }
+      alert(msg);
+    } catch(err){
+      alert('Não foi possível ler o arquivo. Verifique se ele está no formato correto.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+/* ---------------- Navegação ---------------- */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+    if(btn.dataset.page === 'dashboard') renderDashboard();
+  });
+});
+
+function toggleForm(id){
+  const el = document.getElementById(id);
+  el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+}
+
+/* ---------------- Cálculo de parcelas ---------------- */
+function getMesAtual(){
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`;
+}
+
+function formatMes(mesStr){
+  const [y,m] = mesStr.split('-').map(Number);
+  const d = new Date(y, m-1, 1);
+  return d.toLocaleDateString('pt-BR', {month:'short', year:'numeric'});
+}
+
+function somarMeses(mesStr, qtd){
+  const [y,m] = mesStr.split('-').map(Number);
+  const d = new Date(y, m-1+qtd, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// retorna {parcelaAtual, quitado, naoIniciado, diff} relativo a um mês de referência (padrão: mês atual real)
+function infoParcela(mesInicio, totalParcelas, mesRef){
+  mesRef = mesRef || getMesAtual();
+  if(!mesInicio) return {parcelaAtual: 1, quitado: false, naoIniciado: false, diff: 0};
+  const [ay, am] = mesInicio.split('-').map(Number);
+  const [ry, rm] = mesRef.split('-').map(Number);
+  const diff = (ry-ay)*12 + (rm-am);
+  const atual = Math.min(Math.max(diff+1,1), totalParcelas);
+  const quitado = diff+1 > totalParcelas;
+  const naoIniciado = diff < 0;
+  return {parcelaAtual: atual, quitado, naoIniciado, diff};
+}
+
+// valor da parcela de uma compra/empréstimo ativa num determinado mês (0 se não houver parcela ativa)
+function valorAtivoNoMes(item, mesRef){
+  const info = infoParcela(item.data, item.parcelas, mesRef);
+  if(info.naoIniciado || info.quitado) return 0;
+  return item.valor / item.parcelas;
+}
+
+/* ---------------- Cartões ---------------- */
+function popularSelectCartoes(){
+  const opts = cartoes.map(c=>`<option value="${c.id}">${c.nome} (${c.banco||'—'})</option>`).join('');
+  document.getElementById('p-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+  document.getElementById('e-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+  document.getElementById('d-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+}
+
+let editandoCartaoId = null;
+
+function abrirNovoCartao(){
+  editandoCartaoId = null;
+  document.getElementById('form-cartao-titulo').textContent = 'Novo cartão';
+  preencherFormCartao(null);
+  document.getElementById('form-cartao').style.display = 'block';
+}
+
+function preencherFormCartao(c){
+  document.getElementById('c-nome').value = c ? c.nome : '';
+  document.getElementById('c-banco').value = c ? c.banco : '';
+  document.getElementById('c-limite').value = c ? c.limite : '';
+  document.getElementById('c-fechamento').value = c ? c.fechamento : '';
+  document.getElementById('c-vencimento').value = c ? c.vencimento : '';
+  document.getElementById('c-cor').value = c ? c.cor : '#2fa88a';
+}
+
+function editarCartao(id){
+  const c = cartoes.find(c=>c.id===id);
+  if(!c) return;
+  editandoCartaoId = id;
+  document.getElementById('form-cartao-titulo').textContent = 'Editar cartão';
+  preencherFormCartao(c);
+  document.getElementById('form-cartao').style.display = 'block';
+  document.getElementById('form-cartao').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormCartao(){
+  editandoCartaoId = null;
+  document.getElementById('form-cartao-titulo').textContent = 'Novo cartão';
+  preencherFormCartao(null);
+  toggleForm('form-cartao');
+}
+
+function salvarCartao(){
+  const nome = document.getElementById('c-nome').value.trim();
+  const banco = document.getElementById('c-banco').value.trim();
+  const limite = parseFloat(document.getElementById('c-limite').value) || 0;
+  const fechamento = parseInt(document.getElementById('c-fechamento').value) || null;
+  const vencimento = parseInt(document.getElementById('c-vencimento').value) || null;
+  const cor = document.getElementById('c-cor').value;
+  if(!nome){ alert('Dê um nome ao cartão.'); return; }
+
+  if(editandoCartaoId){
+    const c = cartoes.find(c=>c.id===editandoCartaoId);
+    Object.assign(c, {nome, banco, limite, fechamento, vencimento, cor});
+  } else {
+    cartoes.push({id: uid(), nome, banco, limite, fechamento, vencimento, cor});
+  }
+  DB.set('ffin_cartoes', cartoes);
+  editandoCartaoId = null;
+  document.getElementById('form-cartao-titulo').textContent = 'Novo cartão';
+  preencherFormCartao(null);
+  toggleForm('form-cartao');
+  renderCartoes();
+  renderDashboard();
+}
+
+function removerCartao(id){
+  if(!confirm('Remover este cartão? As compras/empréstimos vinculados continuarão registrados.')) return;
+  cartoes = cartoes.filter(c=>c.id!==id);
+  DB.set('ffin_cartoes', cartoes);
+  renderCartoes();
+}
+
+function nomeCartao(id){
+  const c = cartoes.find(c=>c.id===id);
+  return c ? c.nome : 'Cartão removido';
+}
+function corCartao(id){
+  const c = cartoes.find(c=>c.id===id);
+  return c ? c.cor : '#6b7570';
+}
+function vencimentoCartao(id){
+  const c = cartoes.find(c=>c.id===id);
+  return c && c.vencimento ? c.vencimento : null;
+}
+
+// item pode ser uma compra ou um empréstimo; itens antigos sem "forma" são tratados como crédito
+function formaDoItem(item){
+  return item.forma || 'credito';
+}
+function labelOrigemPagamento(item){
+  const forma = formaDoItem(item);
+  if(forma === 'debito') return '💳 Débito';
+  if(forma === 'pix') return '⚡ Pix';
+  return nomeCartao(item.cardId);
+}
+
+// saldo ainda comprometido no cartão a partir do mês atual (parcelas restantes de compras não quitadas)
+function valorComprometido(item, mesRef){
+  const info = infoParcela(item.data, item.parcelas, mesRef);
+  if(info.quitado) return 0;
+  const valorParcela = item.valor / item.parcelas;
+  if(info.naoIniciado) return item.valor;
+  const parcelasRestantes = item.parcelas - (info.parcelaAtual - 1);
+  return valorParcela * parcelasRestantes;
+}
+
+function renderCartoes(){
+  popularSelectCartoes();
+  const el = document.getElementById('lista-cartoes');
+  if(cartoes.length===0){
+    el.innerHTML = '<div class="empty">Nenhum cartão cadastrado ainda.</div>';
+    renderFaturas();
+    return;
+  }
+
+  const mesAtual = getMesAtual();
+  el.innerHTML = cartoes.map(c=>{
+    const usado = compras.filter(p=>p.cardId===c.id).reduce((s,p)=>s+valorComprometido(p, mesAtual), 0);
+    const pct = c.limite > 0 ? Math.min(100, Math.round((usado/c.limite)*100)) : 0;
+    const corBarra = pct >= 90 ? 'var(--coral)' : (pct >= 60 ? 'var(--amber)' : 'var(--emerald)');
+    return `
+    <div class="ticket">
+      <div class="col">
+        <div class="title"><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</div>
+        <div class="meta">${c.banco||'—'} · fecha dia ${c.fechamento||'?'} · vence dia ${c.vencimento||'?'}</div>
+        <div class="limit-bar"><div class="limit-bar-fill" style="width:${pct}%; background:${corBarra}"></div></div>
+        <div class="meta" style="margin-top:5px;">${brl(usado)} comprometido de ${brl(c.limite)} (${pct}%)</div>
+      </div>
+      <div class="amount">${brl(c.limite)}</div>
+      <div class="actions">
+        <button class="btn ghost small" onclick="editarCartao('${c.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerCartao('${c.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderFaturas();
+}
+
+/* ---------------- Compras ---------------- */
+function ehRapido(categoria){
+  return categoriasGasto.includes(categoria);
+}
+
+function toggleCampos(prefix){
+  const categoria = document.getElementById(prefix+'-categoria').value;
+  const forma = document.getElementById(prefix+'-forma').value;
+  const ehCredito = (forma === 'credito');
+  const mostrarDesc = !ehRapido(categoria);
+  const mostrarParcelasData = ehCredito && mostrarDesc;
+
+  const elCartao = document.getElementById(prefix+'-campo-cartao');
+  if(elCartao) elCartao.style.display = ehCredito ? 'block' : 'none';
+
+  const elDesc = document.getElementById(prefix+'-campo-desc');
+  if(elDesc) elDesc.style.display = mostrarDesc ? 'block' : 'none';
+
+  [prefix+'-campo-parcelas', prefix+'-campo-data'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = mostrarParcelasData ? 'block' : 'none';
+  });
+}
+function toggleCamposCompra(){ toggleCampos('p'); }
+function toggleCamposDashboard(){ toggleCampos('d'); }
+
+let editandoCompraId = null;
+
+function preencherFormCompra(p){
+  document.getElementById('p-forma').value = p ? formaDoItem(p) : 'credito';
+  document.getElementById('p-cartao').value = p ? (p.cardId || '') : '';
+  document.getElementById('p-categoria').value = p ? p.categoria : 'Uber KNN';
+  document.getElementById('p-valor').value = p ? p.valor : '';
+  document.getElementById('p-data-compra').value = p ? (p.dataCompra || '') : new Date().toISOString().slice(0,10);
+  document.getElementById('p-desc').value = p ? p.desc : '';
+  document.getElementById('p-parcelas').value = p ? p.parcelas : 1;
+  document.getElementById('p-data').value = p ? p.data : '';
+  toggleCamposCompra();
+}
+
+function abrirNovaCompra(){
+  editandoCompraId = null;
+  document.getElementById('form-compra-titulo').textContent = 'Nova compra';
+  preencherFormCompra(null);
+  document.getElementById('form-compra').style.display = 'block';
+}
+
+function editarCompra(id){
+  const p = compras.find(c=>c.id===id);
+  if(!p) return;
+  editandoCompraId = id;
+  document.getElementById('form-compra-titulo').textContent = 'Editar compra';
+  preencherFormCompra(p);
+  document.getElementById('form-compra').style.display = 'block';
+  document.getElementById('form-compra').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormCompra(){
+  editandoCompraId = null;
+  document.getElementById('form-compra-titulo').textContent = 'Nova compra';
+  preencherFormCompra(null);
+  toggleForm('form-compra');
+}
+
+function lancarGasto(prefix, editId){
+  const forma = document.getElementById(prefix+'-forma').value;
+  const ehCredito = (forma === 'credito');
+  const cardId = ehCredito ? document.getElementById(prefix+'-cartao').value : null;
+  const categoria = document.getElementById(prefix+'-categoria').value.trim();
+  const valor = parseFloat(document.getElementById(prefix+'-valor').value);
+  if(ehCredito && !cardId){ alert('Cadastre e selecione um cartão.'); return false; }
+  if(!valor){ alert('Preencha o valor.'); return false; }
+
+  const dataCompraEl = document.getElementById(prefix+'-data-compra');
+  const dataCompra = (dataCompraEl && dataCompraEl.value) || new Date().toISOString().slice(0,10);
+
+  let desc, parcelas, data;
+  if(ehRapido(categoria)){
+    desc = categoria;
+    parcelas = 1;
+    data = dataCompra.slice(0,7);
+  } else {
+    desc = document.getElementById(prefix+'-desc').value.trim();
+    if(!desc){ alert('Preencha a descrição.'); return false; }
+    if(ehCredito){
+      parcelas = parseInt(document.getElementById(prefix+'-parcelas').value) || 1;
+      data = document.getElementById(prefix+'-data').value || dataCompra.slice(0,7);
+    } else {
+      parcelas = 1;
+      data = dataCompra.slice(0,7);
+    }
+  }
+
+  const dados = {cardId, forma, desc, categoria, valor, parcelas, data, dataCompra};
+  if(editId){
+    const idx = compras.findIndex(c=>c.id===editId);
+    if(idx > -1) compras[idx] = {...compras[idx], ...dados};
+  } else {
+    compras.push({id: uid(), ...dados});
+  }
+  DB.set('ffin_compras', compras);
+
+  document.getElementById(prefix+'-valor').value = '';
+  const descEl = document.getElementById(prefix+'-desc');
+  if(descEl) descEl.value = '';
+  const parcEl = document.getElementById(prefix+'-parcelas');
+  if(parcEl) parcEl.value = 1;
+  const dataEl = document.getElementById(prefix+'-data');
+  if(dataEl) dataEl.value = '';
+  if(dataCompraEl) dataCompraEl.value = new Date().toISOString().slice(0,10);
+  return true;
+}
+
+function salvarCompra(){
+  if(!lancarGasto('p', editandoCompraId)) return;
+  editandoCompraId = null;
+  document.getElementById('form-compra-titulo').textContent = 'Nova compra';
+  toggleForm('form-compra');
+  renderCompras();
+}
+
+function salvarGastoDashboard(){
+  if(!lancarGasto('d')) return;
+  renderCompras();
+  renderDashboard();
+}
+
+function removerCompra(id){
+  if(!confirm('Excluir esta compra?')) return;
+  compras = compras.filter(c=>c.id!==id);
+  DB.set('ffin_compras', compras);
+  renderCompras();
+}
+
+function formatarDataCompra(p){
+  if(p.dataCompra){
+    const [y,m,d] = p.dataCompra.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return p.data ? formatMes(p.data) : '';
+}
+
+function gerarDetalheParcelasCompra(p){
+  const info = infoParcela(p.data, p.parcelas);
+  let linhas = '';
+  for(let i=1; i<=p.parcelas; i++){
+    const mes = somarMeses(p.data, i-1);
+    let statusLabel, corBorda;
+    if(info.quitado || i < info.parcelaAtual){ statusLabel = 'Paga'; corBorda = 'var(--emerald)'; }
+    else if(i === info.parcelaAtual){ statusLabel = 'Parcela atual'; corBorda = 'var(--amber)'; }
+    else { statusLabel = 'Futura'; corBorda = 'var(--line)'; }
+    linhas += `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); font-size:12.5px;">
+      <span>Parcela ${i}/${p.parcelas} — ${formatMes(mes)}</span>
+      <span class="badge" style="border-color:${corBorda}; color:${corBorda};">${statusLabel}</span>
+    </div>`;
+  }
+  return linhas;
+}
+
+function toggleDetalheCompra(id){
+  const el = document.getElementById(`detalhe-compra-${id}`);
+  if(el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+}
+
+function renderCompras(){
+  const el = document.getElementById('lista-compras');
+  if(compras.length===0){ el.innerHTML = '<div class="empty">Nenhuma compra registrada ainda.</div>'; return; }
+  el.innerHTML = compras.slice().reverse().map(p=>{
+    const info = infoParcela(p.data, p.parcelas);
+    const valorParcela = p.valor / p.parcelas;
+    const status = info.quitado ? 'ok' : 'pending';
+    return `
+    <div class="ticket ${status}" style="flex-wrap:wrap;">
+      <div class="col">
+        <div class="title">${p.desc} <span class="badge" style="margin-left:6px;">${p.categoria||'Sem tipo'}</span></div>
+        <div class="meta">${labelOrigemPagamento(p)} · ${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
+      </div>
+      <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
+      <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
+      <div class="actions">
+        ${p.parcelas>1 ? `<button class="btn ghost small" onclick="toggleDetalheCompra('${p.id}')">Ver parcelas</button>` : ''}
+        <button class="btn ghost small" onclick="editarCompra('${p.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerCompra('${p.id}')">Excluir</button>
+      </div>
+      ${p.parcelas>1 ? `
+      <div id="detalhe-compra-${p.id}" style="display:none; width:100%; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
+        ${gerarDetalheParcelasCompra(p)}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  renderConstruir();
+  renderUber();
+  renderFaturas();
+}
+
+function renderConstruir(){
+  const elLista = document.getElementById('lista-construir');
+  const elTotal = document.getElementById('stat-construir-total');
+  const elHint = document.getElementById('stat-construir-hint');
+  if(!elLista) return;
+
+  const gastos = compras.filter(p => p.categoria === 'Uber Construir');
+  const total = gastos.reduce((s,p)=>s+p.valor, 0);
+  elTotal.textContent = brl(total);
+  elHint.textContent = `${gastos.length} lançamento(s)`;
+
+  if(gastos.length===0){
+    elLista.innerHTML = '<div class="empty">Nenhum gasto lançado como "Uber Construir" ainda.</div>';
+    return;
+  }
+
+  elLista.innerHTML = gastos.slice().reverse().map(p=>{
+    const info = infoParcela(p.data, p.parcelas);
+    const valorParcela = p.valor / p.parcelas;
+    const status = info.quitado ? 'ok' : 'pending';
+    return `
+    <div class="ticket ${status}">
+      <div class="col">
+        <div class="title">${p.desc}</div>
+        <div class="meta">${labelOrigemPagamento(p)} · ${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
+      </div>
+      <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
+      <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderUber(){
+  const elTotal = document.getElementById('stat-uber-total');
+  const elHint = document.getElementById('stat-uber-hint');
+  const container = document.getElementById('uber-categorias-container');
+  if(!container) return;
+
+  const tipos = ['Uber KNN','Uber LAH','Uber Outros'];
+  const gastos = compras.filter(p => tipos.includes(p.categoria));
+  const total = gastos.reduce((s,p)=>s+p.valor, 0);
+  if(elTotal) elTotal.textContent = brl(total);
+  if(elHint) elHint.textContent = `${gastos.length} lançamento(s)`;
+
+  container.innerHTML = tipos.map(tipo=>{
+    const itens = gastos.filter(p=>p.categoria===tipo).slice().reverse();
+    const totalTipo = itens.reduce((s,p)=>s+p.valor, 0);
+
+    const linhas = itens.length ? itens.map(p=>{
+      const info = infoParcela(p.data, p.parcelas);
+      const valorParcela = p.valor / p.parcelas;
+      const status = info.quitado ? 'ok' : 'pending';
+      return `
+      <div class="ticket ${status}">
+        <div class="col">
+          <div class="title">${p.desc}</div>
+          <div class="meta">${labelOrigemPagamento(p)} · ${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
+        </div>
+        <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
+        <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
+      </div>`;
+    }).join('') : '<div class="empty">Nenhum lançamento nesta categoria ainda.</div>';
+
+    return `
+    <div class="panel">
+      <h2>
+        <span>${tipo}</span>
+        <span class="amount" style="font-size:16px;">${brl(totalTipo)}</span>
+      </h2>
+      ${linhas}
+    </div>`;
+  }).join('');
+}
+
+function renderFaturas(){
+  const container = document.getElementById('faturas-container');
+  if(!container) return;
+
+  if(cartoes.length===0){
+    container.innerHTML = '<div class="panel"><div class="empty">Cadastre um cartão para ver as faturas separadas.</div></div>';
+    return;
+  }
+
+  container.innerHTML = cartoes.map(c=>{
+    const itens = compras.filter(p=>p.cardId===c.id);
+    let totalMes = 0;
+    let totalGeral = 0;
+    itens.forEach(p=>{
+      const info = infoParcela(p.data, p.parcelas);
+      if(!info.quitado) totalMes += (p.valor / p.parcelas);
+      totalGeral += p.valor;
+    });
+
+    const linhas = itens.length ? itens.slice().reverse().map(p=>{
+      const info = infoParcela(p.data, p.parcelas);
+      const valorParcela = p.valor / p.parcelas;
+      const status = info.quitado ? 'ok' : 'pending';
+      return `
+      <div class="ticket ${status}">
+        <div class="col">
+          <div class="title">${p.desc} <span class="badge" style="margin-left:6px;">${p.categoria||'Sem tipo'}</span></div>
+          <div class="meta">${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
+        </div>
+        <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
+        <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
+      </div>`;
+    }).join('') : '<div class="empty">Nenhum lançamento neste cartão ainda.</div>';
+
+    return `
+    <div class="panel">
+      <h2>
+        <span><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</span>
+        <span class="amount" style="font-size:16px;">${brl(totalMes)} este mês</span>
+      </h2>
+      <div class="subtitle" style="margin:-10px 0 14px;">${c.banco||'—'} · fecha dia ${c.fechamento||'?'} · vence dia ${c.vencimento||'?'} · total histórico ${brl(totalGeral)}</div>
+      ${linhas}
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- Empréstimos a terceiros ---------------- */
+let editandoEmprestimoId = null;
+
+function preencherFormEmprestimo(e){
+  document.getElementById('e-pessoa').value = e ? e.pessoa : '';
+  document.getElementById('e-cartao').value = e ? e.cardId : '';
+  document.getElementById('e-desc').value = e ? e.desc : '';
+  document.getElementById('e-valor').value = e ? e.valor : '';
+  document.getElementById('e-parcelas').value = e ? e.parcelas : 1;
+  document.getElementById('e-data').value = e ? e.data : '';
+}
+
+function abrirNovoEmprestimo(){
+  editandoEmprestimoId = null;
+  document.getElementById('form-emprestimo-titulo').textContent = 'Novo empréstimo de cartão';
+  preencherFormEmprestimo(null);
+  document.getElementById('form-emprestimo').style.display = 'block';
+}
+
+function editarEmprestimo(id){
+  const e = emprestimos.find(e=>e.id===id);
+  if(!e) return;
+  editandoEmprestimoId = id;
+  document.getElementById('form-emprestimo-titulo').textContent = 'Editar empréstimo';
+  preencherFormEmprestimo(e);
+  document.getElementById('form-emprestimo').style.display = 'block';
+  document.getElementById('form-emprestimo').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormEmprestimo(){
+  editandoEmprestimoId = null;
+  document.getElementById('form-emprestimo-titulo').textContent = 'Novo empréstimo de cartão';
+  preencherFormEmprestimo(null);
+  toggleForm('form-emprestimo');
+}
+
+function salvarEmprestimo(){
+  const cardId = document.getElementById('e-cartao').value;
+  const pessoa = document.getElementById('e-pessoa').value.trim();
+  const desc = document.getElementById('e-desc').value.trim();
+  const valor = parseFloat(document.getElementById('e-valor').value);
+  const parcelas = parseInt(document.getElementById('e-parcelas').value) || 1;
+  const data = document.getElementById('e-data').value || new Date().toISOString().slice(0,7);
+  if(!cardId){ alert('Cadastre e selecione um cartão.'); return; }
+  if(!pessoa || !valor){ alert('Preencha o nome da pessoa e o valor.'); return; }
+
+  if(editandoEmprestimoId){
+    const e = emprestimos.find(e=>e.id===editandoEmprestimoId);
+    Object.assign(e, {cardId, pessoa, desc, valor, parcelas, data});
+  } else {
+    emprestimos.push({id: uid(), cardId, pessoa, desc, valor, parcelas, data, pagas: []});
+  }
+  DB.set('ffin_emprestimos', emprestimos);
+  editandoEmprestimoId = null;
+  document.getElementById('form-emprestimo-titulo').textContent = 'Novo empréstimo de cartão';
+  preencherFormEmprestimo(null);
+  toggleForm('form-emprestimo');
+  renderEmprestimos();
+  renderDashboard();
+}
+
+function removerEmprestimo(id){
+  if(!confirm('Excluir este empréstimo?')) return;
+  emprestimos = emprestimos.filter(e=>e.id!==id);
+  DB.set('ffin_emprestimos', emprestimos);
+  renderEmprestimos();
+}
+
+function marcarParcelaPaga(id, parcelaNum){
+  const e = emprestimos.find(e=>e.id===id);
+  if(!e) return;
+  if(e.pagas.includes(parcelaNum)){
+    e.pagas = e.pagas.filter(n=>n!==parcelaNum);
+  } else {
+    e.pagas.push(parcelaNum);
+  }
+  DB.set('ffin_emprestimos', emprestimos);
+  renderEmprestimos();
+  renderDashboard();
+}
+
+function gerarDetalheParcelas(e){
+  const venc = vencimentoCartao(e.cardId);
+  let linhas = '';
+  for(let i=1; i<=e.parcelas; i++){
+    const mes = somarMeses(e.data, i-1);
+    const paga = e.pagas.includes(i);
+    linhas += `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); font-size:12.5px;">
+      <span>Parcela ${i}/${e.parcelas} — ${formatMes(mes)}${venc ? ' (vence dia '+venc+')' : ''}</span>
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span class="badge" style="${paga ? 'border-color:var(--emerald); color:var(--emerald);' : ''}">${paga ? 'Paga' : 'Pendente'}</span>
+        <button class="btn ghost small" onclick="marcarParcelaPaga('${e.id}', ${i})">${paga ? 'Desmarcar' : 'Marcar'}</button>
+      </span>
+    </div>`;
+  }
+  return linhas;
+}
+
+function toggleDetalheEmprestimo(id){
+  const el = document.getElementById(`detalhe-emp-${id}`);
+  if(el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+}
+
+function renderEmprestimos(){
+  const el = document.getElementById('lista-emprestimos');
+  if(emprestimos.length===0){ el.innerHTML = '<div class="empty">Nenhum empréstimo registrado ainda.</div>'; return; }
+  el.innerHTML = emprestimos.slice().reverse().map(e=>{
+    const info = infoParcela(e.data, e.parcelas);
+    const valorParcela = e.valor / e.parcelas;
+    const parcelaAtualPaga = e.pagas.includes(info.parcelaAtual);
+    const status = info.quitado ? 'ok' : (parcelaAtualPaga ? 'ok' : 'pending');
+    const mesParcelaAtual = formatMes(somarMeses(e.data, info.parcelaAtual - 1));
+    const venc = vencimentoCartao(e.cardId);
+    return `
+    <div class="ticket ${status}" style="flex-wrap:wrap;">
+      <div class="col">
+        <div class="title">${e.pessoa} ${e.desc? '— '+e.desc : ''}</div>
+        <div class="meta">${nomeCartao(e.cardId)}${venc ? ' · vence dia '+venc : ''} · total ${brl(e.valor)} · ${e.pagas.length}/${e.parcelas} parcelas pagas</div>
+      </div>
+      <div class="badge">${info.quitado ? 'Todas parcelas venceram' : `Parcela ${info.parcelaAtual}/${e.parcelas} · ${mesParcelaAtual}`}</div>
+      <div class="amount">${brl(valorParcela)}</div>
+      <div class="actions">
+        ${!info.quitado ? `<button class="btn small" onclick="marcarParcelaPaga('${e.id}', ${info.parcelaAtual})">${parcelaAtualPaga ? 'Desmarcar' : 'Marcar paga'}</button>` : ''}
+        <button class="btn ghost small" onclick="toggleDetalheEmprestimo('${e.id}')">Ver parcelas</button>
+        <button class="btn ghost small" onclick="editarEmprestimo('${e.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerEmprestimo('${e.id}')">Excluir</button>
+      </div>
+      <div id="detalhe-emp-${e.id}" style="display:none; width:100%; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
+        ${gerarDetalheParcelas(e)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- Dinheiro guardado (cofrinhos) ---------------- */
+let editandoCofreId = null;
+
+function popularSelectCofres(){
+  const opts = cofres.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  document.getElementById('mv-cofre').innerHTML = opts || '<option value="">Cadastre um cofrinho primeiro</option>';
+}
+
+function preencherFormCofre(c){
+  document.getElementById('cf-nome').value = c ? c.nome : '';
+  document.getElementById('cf-meta').value = c ? (c.meta || '') : '';
+  document.getElementById('cf-cor').value = c ? c.cor : '#2fa88a';
+}
+
+function abrirNovoCofre(){
+  editandoCofreId = null;
+  document.getElementById('form-cofre-titulo').textContent = 'Novo cofrinho';
+  preencherFormCofre(null);
+  document.getElementById('form-cofre').style.display = 'block';
+}
+
+function editarCofre(id){
+  const c = cofres.find(c=>c.id===id);
+  if(!c) return;
+  editandoCofreId = id;
+  document.getElementById('form-cofre-titulo').textContent = 'Editar cofrinho';
+  preencherFormCofre(c);
+  document.getElementById('form-cofre').style.display = 'block';
+  document.getElementById('form-cofre').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormCofre(){
+  editandoCofreId = null;
+  document.getElementById('form-cofre-titulo').textContent = 'Novo cofrinho';
+  preencherFormCofre(null);
+  toggleForm('form-cofre');
+}
+
+function salvarCofre(){
+  const nome = document.getElementById('cf-nome').value.trim();
+  const meta = parseFloat(document.getElementById('cf-meta').value) || 0;
+  const cor = document.getElementById('cf-cor').value;
+  if(!nome){ alert('Dê um nome ao cofrinho.'); return; }
+
+  if(editandoCofreId){
+    const c = cofres.find(c=>c.id===editandoCofreId);
+    Object.assign(c, {nome, meta, cor});
+  } else {
+    cofres.push({id: uid(), nome, meta, cor});
+  }
+  DB.set('ffin_cofres', cofres);
+  editandoCofreId = null;
+  document.getElementById('form-cofre-titulo').textContent = 'Novo cofrinho';
+  preencherFormCofre(null);
+  toggleForm('form-cofre');
+  renderCofres();
+}
+
+function removerCofre(id){
+  if(!confirm('Remover este cofrinho? As movimentações relacionadas continuarão registradas.')) return;
+  cofres = cofres.filter(c=>c.id!==id);
+  DB.set('ffin_cofres', cofres);
+  renderCofres();
+}
+
+function saldoCofre(id){
+  return movimentacoesGuardado
+    .filter(m=>m.cofreId===id)
+    .reduce((s,m)=> s + (m.tipo === 'deposito' ? m.valor : -m.valor), 0);
+}
+
+function salvarMovimentacao(){
+  const cofreId = document.getElementById('mv-cofre').value;
+  const tipo = document.getElementById('mv-tipo').value;
+  const valor = parseFloat(document.getElementById('mv-valor').value);
+  const desc = document.getElementById('mv-desc').value.trim();
+  if(!cofreId){ alert('Cadastre e selecione um cofrinho.'); return; }
+  if(!valor){ alert('Preencha o valor.'); return; }
+
+  if(tipo === 'retirada'){
+    const saldoAtual = saldoCofre(cofreId);
+    if(valor > saldoAtual){
+      if(!confirm(`Esse cofrinho tem apenas ${brl(saldoAtual)} guardado. Retirar mesmo assim (o saldo ficará negativo)?`)) return;
+    }
+  }
+
+  movimentacoesGuardado.push({id: uid(), cofreId, tipo, valor, desc, data: new Date().toISOString().slice(0,10)});
+  DB.set('ffin_movs_guardado', movimentacoesGuardado);
+  document.getElementById('mv-valor').value = '';
+  document.getElementById('mv-desc').value = '';
+  renderCofres();
+  renderMovimentacoes();
+  renderDashboard();
+}
+
+function removerMovimentacao(id){
+  if(!confirm('Excluir esta movimentação?')) return;
+  movimentacoesGuardado = movimentacoesGuardado.filter(m=>m.id!==id);
+  DB.set('ffin_movs_guardado', movimentacoesGuardado);
+  renderCofres();
+  renderMovimentacoes();
+  renderDashboard();
+}
+
+function renderCofres(){
+  popularSelectCofres();
+  const el = document.getElementById('lista-cofres');
+  const elTotal = document.getElementById('stat-guardado-total');
+  const elHint = document.getElementById('stat-guardado-hint');
+  if(!el) return;
+
+  const totalGuardado = cofres.reduce((s,c)=> s + saldoCofre(c.id), 0);
+  if(elTotal) elTotal.textContent = brl(totalGuardado);
+  if(elHint) elHint.textContent = `${cofres.length} cofrinho(s)`;
+
+  if(cofres.length===0){
+    el.innerHTML = '<div class="empty">Nenhum cofrinho cadastrado ainda.</div>';
+    return;
+  }
+
+  el.innerHTML = cofres.map(c=>{
+    const saldo = saldoCofre(c.id);
+    const temMeta = c.meta > 0;
+    const pct = temMeta ? Math.max(0, Math.min(100, Math.round((saldo/c.meta)*100))) : 0;
+    return `
+    <div class="ticket">
+      <div class="col">
+        <div class="title"><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</div>
+        ${temMeta ? `
+        <div class="limit-bar"><div class="limit-bar-fill" style="width:${pct}%; background:${c.cor}"></div></div>
+        <div class="meta" style="margin-top:5px;">${brl(saldo)} de ${brl(c.meta)} (${pct}%)</div>
+        ` : `<div class="meta">${brl(saldo)} guardado · sem meta definida</div>`}
+      </div>
+      <div class="amount">${brl(saldo)}</div>
+      <div class="actions">
+        <button class="btn ghost small" onclick="editarCofre('${c.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerCofre('${c.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMovimentacoes(){
+  const el = document.getElementById('lista-movimentacoes');
+  if(!el) return;
+  if(movimentacoesGuardado.length===0){
+    el.innerHTML = '<div class="empty">Nenhuma movimentação registrada ainda.</div>';
+    renderGraficoGuardado();
+    return;
+  }
+
+  el.innerHTML = movimentacoesGuardado.slice().reverse().map(m=>{
+    const cofre = cofres.find(c=>c.id===m.cofreId);
+    const nomeCofre = cofre ? cofre.nome : 'Cofrinho removido';
+    const status = m.tipo === 'deposito' ? 'ok' : 'pending';
+    const sinal = m.tipo === 'deposito' ? '+' : '−';
+    return `
+    <div class="ticket ${status}">
+      <div class="col">
+        <div class="title">${nomeCofre} ${m.desc ? '— '+m.desc : ''}</div>
+        <div class="meta">${m.tipo === 'deposito' ? 'Depósito' : 'Retirada'} · ${new Date(m.data+'T00:00:00').toLocaleDateString('pt-BR')}</div>
+      </div>
+      <div class="amount">${sinal} ${brl(m.valor)}</div>
+      <div class="actions">
+        <button class="btn danger small" onclick="removerMovimentacao('${m.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderGraficoGuardado();
+}
+
+let chartGuardadoMes = null;
+
+function renderGraficoGuardado(){
+  const canvas = document.getElementById('chart-guardado-mes');
+  if(!canvas) return;
+  if(typeof Chart === 'undefined'){
+    canvas.parentElement.innerHTML = '<div class="empty">Não foi possível carregar a biblioteca de gráficos. Verifique sua conexão e recarregue a página.</div>';
+    return;
+  }
+
+  const porMes = {};
+  movimentacoesGuardado.forEach(m=>{
+    const mes = m.data ? m.data.slice(0,7) : getMesAtual();
+    const valor = m.tipo === 'deposito' ? m.valor : -m.valor;
+    porMes[mes] = (porMes[mes]||0) + valor;
+  });
+
+  const mesesOrdenados = Object.keys(porMes).sort();
+  const labels = mesesOrdenados.map(formatMes);
+  const valores = mesesOrdenados.map(mes=>porMes[mes]);
+  const cores = valores.map(v => v >= 0 ? '#2fa88a' : '#c14f3a');
+
+  if(chartGuardadoMes) chartGuardadoMes.destroy();
+  try{
+    chartGuardadoMes = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels.length ? labels : ['Sem movimentações'],
+        datasets: [{ data: valores.length ? valores : [0], backgroundColor: cores.length ? cores : ['#dcdcd3'], borderRadius: 6 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx)=> ' ' + brl(ctx.raw) } }
+        },
+        scales: {
+          x: { ticks: { color: '#6b7570' }, grid: { display:false } },
+          y: { ticks: { color: '#6b7570', callback: (v)=>brl(v) }, grid: { color: '#e5e5dd' } }
+        }
+      }
+    });
+  } catch(err){
+    console.error('Erro ao criar gráfico de guardado por mês:', err);
+  }
+}
+
+/* ---------------- Lista de desejos ---------------- */
+let editandoDesejoId = null;
+
+function preencherFormDesejo(d){
+  document.getElementById('dj-nome').value = d ? d.nome : '';
+  document.getElementById('dj-link').value = d ? d.link : '';
+  document.getElementById('dj-imagem').value = d ? (d.imagem || '') : '';
+  document.getElementById('dj-valor').value = d ? (d.valor || '') : '';
+  document.getElementById('dj-prioridade').value = d ? d.prioridade : 'media';
+}
+
+function abrirNovoDesejo(){
+  editandoDesejoId = null;
+  document.getElementById('form-desejo-titulo').textContent = 'Novo item';
+  preencherFormDesejo(null);
+  document.getElementById('form-desejo').style.display = 'block';
+}
+
+function editarDesejo(id){
+  const d = itensDesejo.find(d=>d.id===id);
+  if(!d) return;
+  editandoDesejoId = id;
+  document.getElementById('form-desejo-titulo').textContent = 'Editar item';
+  preencherFormDesejo(d);
+  document.getElementById('form-desejo').style.display = 'block';
+  document.getElementById('form-desejo').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormDesejo(){
+  editandoDesejoId = null;
+  document.getElementById('form-desejo-titulo').textContent = 'Novo item';
+  preencherFormDesejo(null);
+  toggleForm('form-desejo');
+}
+
+function normalizarLink(link){
+  if(!link) return '';
+  if(!/^https?:\/\//i.test(link)) return 'https://' + link;
+  return link;
+}
+
+function salvarDesejo(){
+  const nome = document.getElementById('dj-nome').value.trim();
+  const link = normalizarLink(document.getElementById('dj-link').value.trim());
+  const imagem = normalizarLink(document.getElementById('dj-imagem').value.trim());
+  const valor = parseFloat(document.getElementById('dj-valor').value) || 0;
+  const prioridade = document.getElementById('dj-prioridade').value;
+  if(!nome){ alert('Dê um nome ao item.'); return; }
+
+  if(editandoDesejoId){
+    const d = itensDesejo.find(d=>d.id===editandoDesejoId);
+    Object.assign(d, {nome, link, imagem, valor, prioridade});
+  } else {
+    itensDesejo.push({id: uid(), nome, link, imagem, valor, prioridade, comprado: false});
+  }
+  DB.set('ffin_desejos', itensDesejo);
+  editandoDesejoId = null;
+  document.getElementById('form-desejo-titulo').textContent = 'Novo item';
+  preencherFormDesejo(null);
+  toggleForm('form-desejo');
+  renderDesejos();
+}
+
+function removerDesejo(id){
+  if(!confirm('Excluir este item da lista de desejos?')) return;
+  itensDesejo = itensDesejo.filter(d=>d.id!==id);
+  DB.set('ffin_desejos', itensDesejo);
+  renderDesejos();
+}
+
+function marcarComprado(id){
+  const d = itensDesejo.find(d=>d.id===id);
+  if(!d) return;
+  d.comprado = !d.comprado;
+  DB.set('ffin_desejos', itensDesejo);
+  renderDesejos();
+}
+
+function badgePrioridade(p){
+  if(p === 'alta') return `<span class="badge" style="border-color:var(--coral); color:var(--coral);">Alta prioridade</span>`;
+  if(p === 'baixa') return `<span class="badge">Baixa prioridade</span>`;
+  return `<span class="badge" style="border-color:var(--amber); color:var(--amber);">Média prioridade</span>`;
+}
+
+function imagemDesejoHTML(d){
+  if(!d.imagem) return '';
+  return `<img src="${d.imagem}" alt="" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--line); flex-shrink:0;" onerror="this.style.display='none'">`;
+}
+
+function renderDesejos(){
+  const elPend = document.getElementById('lista-desejos-pendentes');
+  const elComp = document.getElementById('lista-desejos-comprados');
+  if(!elPend) return;
+
+  const ordemPrioridade = {alta:0, media:1, baixa:2};
+  const pendentes = itensDesejo.filter(d=>!d.comprado)
+    .slice()
+    .sort((a,b)=> (ordemPrioridade[a.prioridade] ?? 1) - (ordemPrioridade[b.prioridade] ?? 1));
+  const comprados = itensDesejo.filter(d=>d.comprado).slice().reverse();
+
+  elPend.innerHTML = pendentes.length ? pendentes.map(d=>`
+    <div class="ticket pending">
+      ${imagemDesejoHTML(d)}
+      <div class="col">
+        <div class="title">${d.nome}</div>
+        <div class="meta">
+          ${d.valor ? brl(d.valor) + ' · ' : ''}${d.link ? `<a href="${d.link}" target="_blank" rel="noopener noreferrer" style="color:var(--emerald);">Ver link ↗</a>` : 'Sem link'}
+        </div>
+      </div>
+      ${badgePrioridade(d.prioridade)}
+      <div class="actions">
+        <button class="btn small" onclick="marcarComprado('${d.id}')">Comprei</button>
+        <button class="btn ghost small" onclick="editarDesejo('${d.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerDesejo('${d.id}')">Excluir</button>
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Nenhum item na lista ainda.</div>';
+
+  elComp.innerHTML = comprados.length ? comprados.map(d=>`
+    <div class="ticket ok">
+      ${imagemDesejoHTML(d)}
+      <div class="col">
+        <div class="title">${d.nome}</div>
+        <div class="meta">${d.valor ? brl(d.valor) + ' ' : ''}${d.link ? `· <a href="${d.link}" target="_blank" rel="noopener noreferrer" style="color:var(--muted);">Ver link ↗</a>` : ''}</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost small" onclick="marcarComprado('${d.id}')">Desmarcar</button>
+        <button class="btn danger small" onclick="removerDesejo('${d.id}')">Excluir</button>
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Nada comprado ainda.</div>';
+}
+
+/* ---------------- Tipos de gasto (categorias) ---------------- */
+function salvarTipoGasto(){
+  const input = document.getElementById('tg-nome');
+  const nome = input.value.trim();
+  if(!nome){ alert('Digite um nome para o tipo de gasto.'); return; }
+
+  const jaExiste = categoriasGasto.some(c => c.toLowerCase() === nome.toLowerCase()) || nome.toLowerCase() === 'outro';
+  if(jaExiste){ alert('Esse tipo de gasto já existe.'); return; }
+
+  categoriasGasto.push(nome);
+  localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+  input.value = '';
+  popularSelectsCategoria();
+  renderTiposGasto();
+}
+
+function removerTipoGasto(nome){
+  if(CATEGORIAS_PROTEGIDAS.includes(nome)){
+    alert('Esse tipo de gasto é usado por uma aba própria do app e não pode ser excluído.');
+    return;
+  }
+  if(!confirm(`Remover "${nome}" da lista de tipos de gasto? Lançamentos já feitos com esse tipo continuam registrados.`)) return;
+
+  categoriasGasto = categoriasGasto.filter(c => c !== nome);
+  localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+  popularSelectsCategoria();
+  renderTiposGasto();
+}
+
+function renderTiposGasto(){
+  const el = document.getElementById('lista-categorias');
+  if(!el) return;
+
+  if(categoriasGasto.length===0){
+    el.innerHTML = '<div class="empty">Nenhum tipo de gasto cadastrado ainda.</div>';
+    return;
+  }
+
+  el.innerHTML = categoriasGasto.map(c=>{
+    const protegido = CATEGORIAS_PROTEGIDAS.includes(c);
+    return `
+    <div class="ticket">
+      <div class="col">
+        <div class="title">${protegido ? '🔒 ' : ''}${c}</div>
+      </div>
+      <div class="actions">
+        ${protegido ? '' : `<button class="btn danger small" onclick="removerTipoGasto('${c.replace(/'/g, "\\'")}')">Excluir</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- Dashboard ---------------- */
+function getMesSelecionado(){
+  const input = document.getElementById('dash-mes-selecionado');
+  if(!input.value) input.value = getMesAtual();
+  return input.value;
+}
+
+function renderDashboard(){
+  const mesRef = getMesSelecionado();
+  document.getElementById('dash-date').textContent = 'Exibindo dados de ' + formatMes(mesRef);
+
+  // Gasto do mês selecionado (compras próprias)
+  let totalMes = 0;
+  let totalDebitoPix = 0;
+  const porCartao = {};
+  compras.forEach(p=>{
+    const valorParcela = valorAtivoNoMes(p, mesRef);
+    if(valorParcela > 0){
+      totalMes += valorParcela;
+      if(p.cardId){
+        porCartao[p.cardId] = (porCartao[p.cardId]||0) + valorParcela;
+      } else {
+        totalDebitoPix += valorParcela;
+      }
+    }
+  });
+  document.getElementById('stat-mes').textContent = brl(totalMes);
+
+  // A receber no mês selecionado
+  let totalReceber = 0;
+  const emprestimosMes = [];
+  emprestimos.forEach(e=>{
+    const info = infoParcela(e.data, e.parcelas, mesRef);
+    const valorParcela = valorAtivoNoMes(e, mesRef);
+    if(valorParcela > 0 && !e.pagas.includes(info.parcelaAtual)){
+      totalReceber += valorParcela;
+      emprestimosMes.push({e, info, valorParcela});
+    }
+  });
+  document.getElementById('stat-receber').textContent = brl(totalReceber);
+
+  // Limite total
+  const limiteTotal = cartoes.reduce((s,c)=>s+(c.limite||0),0);
+  document.getElementById('stat-limite').textContent = brl(limiteTotal);
+  document.getElementById('stat-limite-hint').textContent = `${cartoes.length} cartão(ões) cadastrado(s)`;
+
+  const totalGuardadoDash = cofres.reduce((s,c)=> s + saldoCofre(c.id), 0);
+  document.getElementById('stat-dash-guardado').textContent = brl(totalGuardadoDash);
+  document.getElementById('stat-dash-guardado-hint').textContent = `${cofres.length} cofrinho(s)`;
+
+  renderGraficos(mesRef);
+  renderGastosFuturos(mesRef);
+
+  // Fatura por cartão no mês selecionado
+  const elCartoes = document.getElementById('dash-cartoes-list');
+  if(cartoes.length===0 && totalDebitoPix===0){
+    elCartoes.innerHTML = '<div class="empty">Cadastre um cartão para ver a fatura estimada.</div>';
+  } else {
+    let html = cartoes.map(c=>{
+      const valor = porCartao[c.id] || 0;
+      return `
+      <div class="ticket">
+        <div class="col">
+          <div class="title"><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</div>
+          <div class="meta">vence dia ${c.vencimento||'?'}</div>
+        </div>
+        <div class="amount">${brl(valor)}</div>
+      </div>`;
+    }).join('');
+    if(totalDebitoPix > 0){
+      html += `
+      <div class="ticket">
+        <div class="col">
+          <div class="title"><span class="card-color-dot" style="background:#7aa6d1"></span>Débito &amp; Pix</div>
+          <div class="meta">gastos fora do cartão de crédito</div>
+        </div>
+        <div class="amount">${brl(totalDebitoPix)}</div>
+      </div>`;
+    }
+    elCartoes.innerHTML = html;
+  }
+
+  // Empréstimos com parcela vencendo no mês selecionado
+  const elEmp = document.getElementById('dash-emprestimos-list');
+  if(emprestimosMes.length===0){
+    elEmp.innerHTML = '<div class="empty">Nada pendente de outras pessoas neste mês.</div>';
+  } else {
+    elEmp.innerHTML = emprestimosMes.map(({e,info,valorParcela})=>`
+      <div class="ticket pending">
+        <div class="col">
+          <div class="title">${e.pessoa} ${e.desc? '— '+e.desc : ''}</div>
+          <div class="meta">${nomeCartao(e.cardId)}</div>
+        </div>
+        <div class="badge">Parcela ${info.parcelaAtual}/${e.parcelas}</div>
+        <div class="amount">${brl(valorParcela)}</div>
+      </div>
+    `).join('');
+  }
+}
+
+/* ---------------- Gráficos ---------------- */
+let chartCategoria = null;
+let chartsPorCartao = {};
+let chartFuturo = null;
+const PALETA_CATEGORIAS = ['#2fa88a','#e0a458','#d9694f','#7aa6d1','#b98fd6','#e8c14a','#6fbf9e','#c47f7f'];
+
+function pluginsPizzaComPercentual(opts){
+  opts = opts || {};
+  return {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: (ctx) => {
+          const total = ctx.dataset.data.reduce((a,b)=>a+b, 0);
+          const pct = total > 0 ? Math.round((ctx.raw/total)*100) : 0;
+          return ' ' + ctx.label + ': ' + brl(ctx.raw) + ' (' + pct + '%)';
+        }
+      }
+    }
+  };
+}
+
+function montarLegendaPercentual(elId, labels, valores, cores){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!labels.length){ el.innerHTML = ''; return; }
+  const total = valores.reduce((a,b)=>a+b, 0);
+  el.innerHTML = labels.map((label,i)=>{
+    const pct = total > 0 ? Math.round((valores[i]/total)*100) : 0;
+    return `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 0;">
+      <span style="display:flex; align-items:center; gap:7px; min-width:0;">
+        <span style="width:9px; height:9px; border-radius:50%; background:${cores[i]}; flex-shrink:0; display:inline-block;"></span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${label}</span>
+      </span>
+      <span style="color:var(--muted); font-family:var(--font-mono); white-space:nowrap;">${pct}% · ${brl(valores[i])}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderGraficos(mesRef){
+  mesRef = mesRef || getMesAtual();
+  renderGraficosPorCartao(mesRef);
+
+  const canvasCategoria = document.getElementById('chart-categoria');
+  if(!canvasCategoria) return;
+  if(typeof Chart === 'undefined'){
+    canvasCategoria.parentElement.innerHTML = '<div class="empty">Não foi possível carregar a biblioteca de gráficos. Verifique sua conexão e recarregue a página.</div>';
+    return;
+  }
+
+  const porCategoria = {};
+  compras.forEach(p=>{
+    const valor = valorAtivoNoMes(p, mesRef);
+    if(valor > 0){
+      const cat = p.categoria || 'Outro';
+      porCategoria[cat] = (porCategoria[cat]||0) + valor;
+    }
+  });
+
+  const catLabels = Object.keys(porCategoria);
+  const catValues = catLabels.map(c=>porCategoria[c]);
+  const catColors = catLabels.map((_,i)=>PALETA_CATEGORIAS[i % PALETA_CATEGORIAS.length]);
+
+  if(chartCategoria) chartCategoria.destroy();
+  try{
+    chartCategoria = new Chart(canvasCategoria, {
+      type: 'doughnut',
+      data: {
+        labels: catLabels.length ? catLabels : ['Sem gastos neste mês'],
+        datasets: [{ data: catValues.length ? catValues : [1], backgroundColor: catColors.length ? catColors : ['#dcdcd3'] }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: pluginsPizzaComPercentual()
+      }
+    });
+  } catch(err){
+    console.error('Erro ao criar gráfico de tipo:', err);
+  }
+  montarLegendaPercentual('legenda-categoria', catLabels, catValues, catColors);
+}
+
+function renderGraficosPorCartao(mesRef){
+  mesRef = mesRef || getMesAtual();
+  const container = document.getElementById('charts-por-cartao');
+  if(!container) return;
+  if(typeof Chart === 'undefined'){
+    container.innerHTML = '<div class="empty">Não foi possível carregar a biblioteca de gráficos. Verifique sua conexão e recarregue a página.</div>';
+    return;
+  }
+
+  Object.values(chartsPorCartao).forEach(ch => ch && ch.destroy());
+  chartsPorCartao = {};
+
+  const temDebitoPix = compras.some(p => !p.cardId);
+  const grupos = [...cartoes];
+  if(temDebitoPix){
+    grupos.push({ id: '__debito_pix__', nome: 'Débito & Pix', cor: '#7aa6d1', virtual: true });
+  }
+
+  if(grupos.length===0){
+    container.innerHTML = '<div class="empty">Cadastre um cartão para ver os gastos divididos.</div>';
+    return;
+  }
+
+  container.innerHTML = grupos.map(c=>`
+    <div>
+      <div style="font-size:13px; font-weight:600; margin-bottom:10px;">
+        <span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}
+      </div>
+      <div style="height:170px;"><canvas id="chart-cartao-${c.id}"></canvas></div>
+      <div id="legenda-cartao-${c.id}" style="margin-top:10px; font-size:11.5px;"></div>
+    </div>
+  `).join('');
+
+  grupos.forEach(c=>{
+    const itens = c.virtual ? compras.filter(p=>!p.cardId) : compras.filter(p=>p.cardId===c.id);
+    const porCategoria = {};
+    itens.forEach(p=>{
+      const valor = valorAtivoNoMes(p, mesRef);
+      if(valor > 0){
+        const cat = p.categoria || 'Outro';
+        porCategoria[cat] = (porCategoria[cat]||0) + valor;
+      }
+    });
+
+    const labels = Object.keys(porCategoria);
+    const valores = labels.map(l=>porCategoria[l]);
+    const cores = labels.map((_,i)=>PALETA_CATEGORIAS[i % PALETA_CATEGORIAS.length]);
+    const canvas = document.getElementById(`chart-cartao-${c.id}`);
+    if(!canvas) return;
+
+    try{
+      chartsPorCartao[c.id] = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels.length ? labels : ['Sem gastos neste mês'],
+          datasets: [{ data: valores.length ? valores : [1], backgroundColor: cores.length ? cores : ['#dcdcd3'] }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: pluginsPizzaComPercentual()
+        }
+      });
+    } catch(err){
+      console.error('Erro ao criar gráfico do cartão:', c.nome, err);
+    }
+    montarLegendaPercentual(`legenda-cartao-${c.id}`, labels, valores, cores);
+  });
+}
+
+function renderGastosFuturos(mesRef){
+  mesRef = mesRef || getMesAtual();
+  const canvas = document.getElementById('chart-futuro');
+  if(!canvas || typeof Chart === 'undefined') return;
+
+  const QTD_MESES = 6;
+  const meses = [];
+  for(let i=0;i<QTD_MESES;i++){ meses.push(somarMeses(mesRef, i)); }
+
+  const valores = meses.map(mes=>{
+    return compras.reduce((s,p)=> s + valorAtivoNoMes(p, mes), 0);
+  });
+  const labels = meses.map(formatMes);
+
+  if(chartFuturo) chartFuturo.destroy();
+  chartFuturo = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: valores, backgroundColor: '#2fa88a', borderRadius: 6 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx)=> ' ' + brl(ctx.raw) } }
+      },
+      scales: {
+        x: { ticks: { color: '#6b7570' }, grid: { display:false } },
+        y: { ticks: { color: '#6b7570', callback: (v)=>brl(v) }, grid: { color: '#e5e5dd' } }
+      }
+    }
+  });
+}
+
+/* ---------------- Inicialização ---------------- */
+document.getElementById('logo-construir-nav').src = LOGO_CONSTRUIR;
+document.getElementById('logo-construir-header').src = LOGO_CONSTRUIR;
+document.getElementById('dash-mes-selecionado').value = getMesAtual();
+document.getElementById('d-data-compra').value = new Date().toISOString().slice(0,10);
+document.getElementById('p-data-compra').value = new Date().toISOString().slice(0,10);
+popularSelectsCategoria();
+popularSelectCartoes();
+renderCartoes();
+renderCompras();
+renderEmprestimos();
+renderCofres();
+renderMovimentacoes();
+renderDesejos();
+renderTiposGasto();
+renderDashboard();
+toggleCamposCompra();
+toggleCamposDashboard();
+</script>
+
+</body>
+</html>
