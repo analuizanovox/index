@@ -378,8 +378,8 @@
       <div class="subtitle" style="margin-top:10px;">Conectar com um código sincroniza seus dados entre diferentes aparelhos/navegadores. O backup em arquivo continua disponível como cópia de segurança extra.</div>
     </div>
 
-    <div style="max-width:220px; margin-bottom:24px;">
-      <label>Mês de referência</label>
+    <div style="max-width:280px; margin-bottom:24px;">
+      <label>Fatura de referência (mês em que você vai pagar)</label>
       <input type="month" id="dash-mes-selecionado" onchange="renderDashboard()">
     </div>
 
@@ -1099,6 +1099,16 @@ function toggleForm(id){
 function getMesAtual(){
   const h = new Date();
   return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`;
+}
+
+// mês da fatura que está "em aberto" agora, considerando o fechamento dos cartões
+// (se o fechamento de algum cartão já passou este mês, uma nova compra hoje iria pra fatura do mês seguinte)
+function getMesFaturaAtual(){
+  const cartoesComFechamento = cartoes.filter(c=>c.fechamento);
+  if(cartoesComFechamento.length === 0) return getMesAtual();
+  const diaHoje = new Date().getDate();
+  const menorFechamento = Math.min(...cartoesComFechamento.map(c=>c.fechamento));
+  return diaHoje > menorFechamento ? somarMeses(getMesAtual(), 1) : getMesAtual();
 }
 
 function formatMes(mesStr){
@@ -2592,14 +2602,14 @@ function renderAlertasVencimento(){
 
 function getMesSelecionado(){
   const input = document.getElementById('dash-mes-selecionado');
-  if(!input.value) input.value = getMesAtual();
+  if(!input.value) input.value = getMesFaturaAtual();
   return input.value;
 }
 
 function renderDashboard(){
   renderAlertasVencimento();
   const mesRef = getMesSelecionado();
-  document.getElementById('dash-date').textContent = 'Exibindo dados de ' + formatMes(mesRef);
+  document.getElementById('dash-date').textContent = 'Exibindo a fatura de ' + formatMes(mesRef);
 
   // Gasto do mês selecionado (compras próprias + assinaturas ativas)
   let totalMes = 0;
@@ -2926,7 +2936,7 @@ function renderTudo(){
 async function inicializarApp(){
   document.getElementById('logo-construir-nav').src = LOGO_CONSTRUIR;
   document.getElementById('logo-construir-header').src = LOGO_CONSTRUIR;
-  document.getElementById('dash-mes-selecionado').value = getMesAtual();
+  document.getElementById('dash-mes-selecionado').value = getMesFaturaAtual();
   document.getElementById('d-data-compra').value = new Date().toISOString().slice(0,10);
   document.getElementById('p-data-compra').value = new Date().toISOString().slice(0,10);
 
