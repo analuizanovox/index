@@ -323,6 +323,11 @@
       </div>
     </header>
 
+    <div class="panel" id="painel-alertas" style="display:none;">
+      <h2>⚠️ Alertas de vencimento</h2>
+      <div id="lista-alertas"></div>
+    </div>
+
     <div class="panel">
       <h2>Lançar gasto rápido</h2>
       <div class="form-grid">
@@ -360,6 +365,7 @@
       </div>
       <div class="form-actions">
         <button class="btn" onclick="conectarSincronizacao()">Conectar</button>
+        <button class="btn ghost" onclick="sincronizarAgora()">🔄 Sincronizar agora</button>
         <button class="btn ghost" onclick="desconectarSincronizacao()">Sair</button>
         <button class="btn ghost" onclick="exportarBackup()">⬇️ Exportar backup</button>
         <label class="btn ghost" style="cursor:pointer; margin:0;">
@@ -517,6 +523,13 @@
 
     <div class="panel">
       <h2>Compras registradas</h2>
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div><label>Buscar por descrição</label><input id="filtro-compra-busca" oninput="renderCompras()" placeholder="Ex: mercado, notebook..."></div>
+        <div><label>Cartão</label><select id="filtro-compra-cartao" onchange="renderCompras()"></select></div>
+        <div><label>Tipo de gasto</label><select id="filtro-compra-categoria" onchange="renderCompras()"></select></div>
+        <div><label>Mês</label><input id="filtro-compra-mes" type="month" onchange="renderCompras()"></div>
+      </div>
+      <button class="btn ghost small" style="margin-bottom:16px;" onclick="limparFiltrosCompras()">Limpar filtros</button>
       <div id="lista-compras"></div>
     </div>
   </section>
@@ -581,6 +594,20 @@
 
     <div class="panel">
       <h2>Empréstimos ativos</h2>
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div><label>Buscar por pessoa/descrição</label><input id="filtro-emp-busca" oninput="renderEmprestimos()" placeholder="Ex: Maria, passagem..."></div>
+        <div><label>Cartão</label><select id="filtro-emp-cartao" onchange="renderEmprestimos()"></select></div>
+        <div><label>Mês</label><input id="filtro-emp-mes" type="month" onchange="renderEmprestimos()"></div>
+        <div>
+          <label>Situação</label>
+          <select id="filtro-emp-situacao" onchange="renderEmprestimos()">
+            <option value="">Todas</option>
+            <option value="pendente">Só pendentes</option>
+            <option value="paga">Só quitadas/em dia</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn ghost small" style="margin-bottom:16px;" onclick="limparFiltrosEmprestimos()">Limpar filtros</button>
       <div id="lista-emprestimos"></div>
     </div>
   </section>
@@ -646,7 +673,7 @@
     </div>
 
     <div class="panel">
-      <h2>Movimentar dinheiro guardado</h2>
+      <h2 id="mv-form-titulo">Movimentar dinheiro guardado</h2>
       <div class="form-grid">
         <div><label>Cofrinho</label><select id="mv-cofre"></select></div>
         <div>
@@ -660,7 +687,8 @@
         <div><label>Descrição (opcional)</label><input id="mv-desc" placeholder="Ex: Sobra do mês, emergência..."></div>
       </div>
       <div class="form-actions">
-        <button class="btn" onclick="salvarMovimentacao()">Lançar</button>
+        <button class="btn" id="mv-btn-salvar" onclick="salvarMovimentacao()">Lançar</button>
+        <button class="btn ghost" id="mv-btn-cancelar" onclick="cancelarFormMovimentacao()" style="display:none;">Cancelar</button>
       </div>
     </div>
 
@@ -799,6 +827,13 @@ function popularSelectsCategoria(){
   const opts = todas.map(c=>`<option value="${c}">${c === 'Outro' ? 'Outro (compra normal)' : c}</option>`).join('');
   document.getElementById('p-categoria').innerHTML = opts;
   document.getElementById('d-categoria').innerHTML = opts;
+
+  const filtroCategoria = document.getElementById('filtro-compra-categoria');
+  if(filtroCategoria){
+    const valorAtual = filtroCategoria.value;
+    filtroCategoria.innerHTML = '<option value="">Todos os tipos</option>' + todas.map(c=>`<option value="${c}">${c}</option>`).join('');
+    filtroCategoria.value = valorAtual;
+  }
 }
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -867,6 +902,15 @@ async function enviarParaNuvem(){
     console.error(err);
     atualizarStatusSync('⚠️ Erro ao sincronizar');
   }
+}
+
+async function sincronizarAgora(){
+  const codigo = getCodigoSync();
+  if(!supaClient){ alert('Não foi possível conectar ao serviço de sincronização.'); return; }
+  if(!codigo){ alert('Conecte um código de sincronização primeiro.'); return; }
+  clearTimeout(syncTimeout);
+  atualizarStatusSync('☁️ Sincronizando...');
+  await enviarParaNuvem();
 }
 
 async function conectarSincronizacao(){
@@ -1104,6 +1148,20 @@ function popularSelectCartoes(){
   document.getElementById('e-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('d-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('fa-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+
+  const optsComTodos = '<option value="">Todos os cartões</option>' + opts;
+  const filtroCompraCartao = document.getElementById('filtro-compra-cartao');
+  if(filtroCompraCartao){
+    const valorAtual = filtroCompraCartao.value;
+    filtroCompraCartao.innerHTML = optsComTodos;
+    filtroCompraCartao.value = valorAtual;
+  }
+  const filtroEmpCartao = document.getElementById('filtro-emp-cartao');
+  if(filtroEmpCartao){
+    const valorAtual = filtroEmpCartao.value;
+    filtroEmpCartao.innerHTML = optsComTodos;
+    filtroEmpCartao.value = valorAtual;
+  }
 }
 
 let editandoCartaoId = null;
@@ -1403,32 +1461,65 @@ function toggleDetalheCompra(id){
   if(el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
 }
 
+function compraPassaFiltro(p){
+  const buscaEl = document.getElementById('filtro-compra-busca');
+  const cartaoEl = document.getElementById('filtro-compra-cartao');
+  const categoriaEl = document.getElementById('filtro-compra-categoria');
+  const mesEl = document.getElementById('filtro-compra-mes');
+
+  const busca = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
+  const cartaoF = cartaoEl ? cartaoEl.value : '';
+  const categoriaF = categoriaEl ? categoriaEl.value : '';
+  const mesF = mesEl ? mesEl.value : '';
+
+  if(busca && !p.desc.toLowerCase().includes(busca)) return false;
+  if(cartaoF && p.cardId !== cartaoF) return false;
+  if(categoriaF && p.categoria !== categoriaF) return false;
+  if(mesF && p.data !== mesF) return false;
+  return true;
+}
+
+function limparFiltrosCompras(){
+  document.getElementById('filtro-compra-busca').value = '';
+  document.getElementById('filtro-compra-cartao').value = '';
+  document.getElementById('filtro-compra-categoria').value = '';
+  document.getElementById('filtro-compra-mes').value = '';
+  renderCompras();
+}
+
 function renderCompras(){
   const el = document.getElementById('lista-compras');
-  if(compras.length===0){ el.innerHTML = '<div class="empty">Nenhuma compra registrada ainda.</div>'; return; }
-  el.innerHTML = compras.slice().reverse().map(p=>{
-    const info = infoParcela(p.data, p.parcelas);
-    const valorParcela = p.valor / p.parcelas;
-    const status = info.quitado ? 'ok' : 'pending';
-    return `
-    <div class="ticket ${status}" style="flex-wrap:wrap;">
-      <div class="col">
-        <div class="title">${p.desc} <span class="badge" style="margin-left:6px;">${p.categoria||'Sem tipo'}</span></div>
-        <div class="meta">${labelOrigemPagamento(p)} · ${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
-      </div>
-      <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
-      <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
-      <div class="actions">
-        ${p.parcelas>1 ? `<button class="btn ghost small" onclick="toggleDetalheCompra('${p.id}')">Ver parcelas</button>` : ''}
-        <button class="btn ghost small" onclick="editarCompra('${p.id}')">Editar</button>
-        <button class="btn danger small" onclick="removerCompra('${p.id}')">Excluir</button>
-      </div>
-      ${p.parcelas>1 ? `
-      <div id="detalhe-compra-${p.id}" style="display:none; width:100%; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
-        ${gerarDetalheParcelasCompra(p)}
-      </div>` : ''}
-    </div>`;
-  }).join('');
+  const filtradas = compras.filter(compraPassaFiltro);
+
+  if(compras.length===0){
+    el.innerHTML = '<div class="empty">Nenhuma compra registrada ainda.</div>';
+  } else if(filtradas.length===0){
+    el.innerHTML = '<div class="empty">Nenhuma compra encontrada com esse filtro.</div>';
+  } else {
+    el.innerHTML = filtradas.slice().reverse().map(p=>{
+      const info = infoParcela(p.data, p.parcelas);
+      const valorParcela = p.valor / p.parcelas;
+      const status = info.quitado ? 'ok' : 'pending';
+      return `
+      <div class="ticket ${status}" style="flex-wrap:wrap;">
+        <div class="col">
+          <div class="title">${p.desc} <span class="badge" style="margin-left:6px;">${p.categoria||'Sem tipo'}</span></div>
+          <div class="meta">${labelOrigemPagamento(p)} · ${formatarDataCompra(p)} · total ${brl(p.valor)}</div>
+        </div>
+        <div class="badge">${info.quitado ? 'Quitado' : `Parcela ${info.parcelaAtual}/${p.parcelas}`}</div>
+        <div class="amount">${brl(valorParcela)}${p.parcelas>1?'/mês':''}</div>
+        <div class="actions">
+          ${p.parcelas>1 ? `<button class="btn ghost small" onclick="toggleDetalheCompra('${p.id}')">Ver parcelas</button>` : ''}
+          <button class="btn ghost small" onclick="editarCompra('${p.id}')">Editar</button>
+          <button class="btn danger small" onclick="removerCompra('${p.id}')">Excluir</button>
+        </div>
+        ${p.parcelas>1 ? `
+        <div id="detalhe-compra-${p.id}" style="display:none; width:100%; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
+          ${gerarDetalheParcelasCompra(p)}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
   renderConstruir();
   renderUber();
   renderFaturas();
@@ -1635,6 +1726,16 @@ function marcarParcelaPaga(id, parcelaNum){
   renderDashboard();
 }
 
+function quitarEmprestimoTotal(id){
+  const e = emprestimos.find(e=>e.id===id);
+  if(!e) return;
+  if(!confirm(`Marcar todas as ${e.parcelas} parcelas de ${e.pessoa} como pagas?`)) return;
+  e.pagas = Array.from({length: e.parcelas}, (_,i)=> i+1);
+  DB.set('ffin_emprestimos', emprestimos);
+  renderEmprestimos();
+  renderDashboard();
+}
+
 function gerarDetalheParcelas(e){
   const venc = vencimentoCartao(e.cardId);
   let linhas = '';
@@ -1658,10 +1759,55 @@ function toggleDetalheEmprestimo(id){
   if(el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
 }
 
+function emprestimoPassaFiltro(e){
+  const buscaEl = document.getElementById('filtro-emp-busca');
+  const cartaoEl = document.getElementById('filtro-emp-cartao');
+  const mesEl = document.getElementById('filtro-emp-mes');
+  const situacaoEl = document.getElementById('filtro-emp-situacao');
+
+  const busca = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
+  const cartaoF = cartaoEl ? cartaoEl.value : '';
+  const mesF = mesEl ? mesEl.value : '';
+  const situacaoF = situacaoEl ? situacaoEl.value : '';
+
+  if(busca){
+    const texto = (e.pessoa + ' ' + (e.desc||'')).toLowerCase();
+    if(!texto.includes(busca)) return false;
+  }
+  if(cartaoF && e.cardId !== cartaoF) return false;
+  if(mesF && e.data !== mesF) return false;
+
+  if(situacaoF){
+    const info = infoParcela(e.data, e.parcelas);
+    const pago = info.quitado || e.pagas.includes(info.parcelaAtual);
+    if(situacaoF === 'pendente' && pago) return false;
+    if(situacaoF === 'paga' && !pago) return false;
+  }
+  return true;
+}
+
+function limparFiltrosEmprestimos(){
+  document.getElementById('filtro-emp-busca').value = '';
+  document.getElementById('filtro-emp-cartao').value = '';
+  document.getElementById('filtro-emp-mes').value = '';
+  document.getElementById('filtro-emp-situacao').value = '';
+  renderEmprestimos();
+}
+
 function renderEmprestimos(){
   const el = document.getElementById('lista-emprestimos');
-  if(emprestimos.length===0){ el.innerHTML = '<div class="empty">Nenhum empréstimo registrado ainda.</div>'; return; }
-  el.innerHTML = emprestimos.slice().reverse().map(e=>{
+  const filtrados = emprestimos.filter(emprestimoPassaFiltro);
+
+  if(emprestimos.length===0){
+    el.innerHTML = '<div class="empty">Nenhum empréstimo registrado ainda.</div>';
+    return;
+  }
+  if(filtrados.length===0){
+    el.innerHTML = '<div class="empty">Nenhum empréstimo encontrado com esse filtro.</div>';
+    return;
+  }
+
+  el.innerHTML = filtrados.slice().reverse().map(e=>{
     const info = infoParcela(e.data, e.parcelas);
     const valorParcela = e.valor / e.parcelas;
     const parcelaAtualPaga = e.pagas.includes(info.parcelaAtual);
@@ -1678,6 +1824,7 @@ function renderEmprestimos(){
       <div class="amount">${brl(valorParcela)}</div>
       <div class="actions">
         ${!info.quitado ? `<button class="btn small" onclick="marcarParcelaPaga('${e.id}', ${info.parcelaAtual})">${parcelaAtualPaga ? 'Desmarcar' : 'Marcar paga'}</button>` : ''}
+        ${(e.pagas.length < e.parcelas) ? `<button class="btn ghost small" onclick="quitarEmprestimoTotal('${e.id}')">Quitar tudo</button>` : ''}
         <button class="btn ghost small" onclick="toggleDetalheEmprestimo('${e.id}')">Ver parcelas</button>
         <button class="btn ghost small" onclick="editarEmprestimo('${e.id}')">Editar</button>
         <button class="btn danger small" onclick="removerEmprestimo('${e.id}')">Excluir</button>
@@ -1760,6 +1907,34 @@ function saldoCofre(id){
     .reduce((s,m)=> s + (m.tipo === 'deposito' ? m.valor : -m.valor), 0);
 }
 
+let editandoMovimentacaoId = null;
+
+function preencherFormMovimentacao(m){
+  document.getElementById('mv-cofre').value = m ? m.cofreId : '';
+  document.getElementById('mv-tipo').value = m ? m.tipo : 'deposito';
+  document.getElementById('mv-valor').value = m ? m.valor : '';
+  document.getElementById('mv-desc').value = m ? (m.desc || '') : '';
+}
+
+function editarMovimentacao(id){
+  const m = movimentacoesGuardado.find(m=>m.id===id);
+  if(!m) return;
+  editandoMovimentacaoId = id;
+  document.getElementById('mv-form-titulo').textContent = 'Editar movimentação';
+  document.getElementById('mv-btn-salvar').textContent = 'Salvar alteração';
+  document.getElementById('mv-btn-cancelar').style.display = 'inline-block';
+  preencherFormMovimentacao(m);
+  document.getElementById('mv-cofre').closest('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormMovimentacao(){
+  editandoMovimentacaoId = null;
+  document.getElementById('mv-form-titulo').textContent = 'Movimentar dinheiro guardado';
+  document.getElementById('mv-btn-salvar').textContent = 'Lançar';
+  document.getElementById('mv-btn-cancelar').style.display = 'none';
+  preencherFormMovimentacao(null);
+}
+
 function salvarMovimentacao(){
   const cofreId = document.getElementById('mv-cofre').value;
   const tipo = document.getElementById('mv-tipo').value;
@@ -1769,16 +1944,20 @@ function salvarMovimentacao(){
   if(!valor){ alert('Preencha o valor.'); return; }
 
   if(tipo === 'retirada'){
-    const saldoAtual = saldoCofre(cofreId);
+    const saldoAtual = saldoCofre(cofreId) + (editandoMovimentacaoId ? (movimentacoesGuardado.find(m=>m.id===editandoMovimentacaoId).tipo === 'retirada' ? movimentacoesGuardado.find(m=>m.id===editandoMovimentacaoId).valor : 0) : 0);
     if(valor > saldoAtual){
       if(!confirm(`Esse cofrinho tem apenas ${brl(saldoAtual)} guardado. Retirar mesmo assim (o saldo ficará negativo)?`)) return;
     }
   }
 
-  movimentacoesGuardado.push({id: uid(), cofreId, tipo, valor, desc, data: new Date().toISOString().slice(0,10)});
+  if(editandoMovimentacaoId){
+    const m = movimentacoesGuardado.find(m=>m.id===editandoMovimentacaoId);
+    Object.assign(m, {cofreId, tipo, valor, desc});
+  } else {
+    movimentacoesGuardado.push({id: uid(), cofreId, tipo, valor, desc, data: new Date().toISOString().slice(0,10)});
+  }
   DB.set('ffin_movs_guardado', movimentacoesGuardado);
-  document.getElementById('mv-valor').value = '';
-  document.getElementById('mv-desc').value = '';
+  cancelarFormMovimentacao();
   renderCofres();
   renderMovimentacoes();
   renderDashboard();
@@ -1853,6 +2032,7 @@ function renderMovimentacoes(){
       </div>
       <div class="amount">${sinal} ${brl(m.valor)}</div>
       <div class="actions">
+        <button class="btn ghost small" onclick="editarMovimentacao('${m.id}')">Editar</button>
         <button class="btn danger small" onclick="removerMovimentacao('${m.id}')">Excluir</button>
       </div>
     </div>`;
@@ -2096,6 +2276,79 @@ function renderTiposGasto(){
 }
 
 /* ---------------- Dashboard ---------------- */
+
+// dias até o vencimento deste mês (positivo = ainda vai vencer, 0 = vence hoje, negativo = já venceu há X dias)
+function statusVencimento(diaVenc){
+  if(!diaVenc) return null;
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const vencimentoEsteMes = new Date(hoje.getFullYear(), hoje.getMonth(), diaVenc);
+  return Math.round((vencimentoEsteMes - hoje) / 86400000);
+}
+
+function labelVencimento(dias){
+  if(dias > 1) return `vence em ${dias} dias`;
+  if(dias === 1) return 'vence amanhã';
+  if(dias === 0) return 'vence hoje';
+  return `venceu há ${Math.abs(dias)} dia(s)`;
+}
+
+function renderAlertasVencimento(){
+  const ALERTA_ANTES = 5;
+  const ALERTA_DEPOIS = 5;
+  const mesAtual = getMesAtual();
+  const alertas = [];
+
+  cartoes.forEach(c=>{
+    const dias = statusVencimento(c.vencimento);
+    if(dias === null || dias > ALERTA_ANTES || dias < -ALERTA_DEPOIS) return;
+
+    const totalFatura = compras.reduce((s,p)=> p.cardId === c.id ? s + valorAtivoNoMes(p, mesAtual) : s, 0);
+    if(totalFatura <= 0) return;
+
+    alertas.push({
+      tipo: dias < 0 ? 'overdue' : (dias <= 1 ? 'urgente' : 'aviso'),
+      texto: `Fatura do ${c.nome} ${labelVencimento(dias)} — ${brl(totalFatura)}`
+    });
+  });
+
+  emprestimos.forEach(e=>{
+    const info = infoParcela(e.data, e.parcelas, mesAtual);
+    if(info.quitado || info.naoIniciado || e.pagas.includes(info.parcelaAtual)) return;
+
+    const card = cartoes.find(c=>c.id===e.cardId);
+    if(!card) return;
+    const dias = statusVencimento(card.vencimento);
+    if(dias === null || dias > ALERTA_ANTES || dias < -ALERTA_DEPOIS) return;
+
+    const valorParcela = e.valor / e.parcelas;
+    alertas.push({
+      tipo: dias < 0 ? 'overdue' : (dias <= 1 ? 'urgente' : 'aviso'),
+      texto: `Parcela de ${e.pessoa} ${labelVencimento(dias)} — ${brl(valorParcela)}`
+    });
+  });
+
+  const painel = document.getElementById('painel-alertas');
+  const el = document.getElementById('lista-alertas');
+  if(!painel || !el) return;
+
+  if(alertas.length === 0){
+    painel.style.display = 'none';
+    return;
+  }
+
+  const ordem = { overdue: 0, urgente: 1, aviso: 2 };
+  alertas.sort((a,b)=> ordem[a.tipo] - ordem[b.tipo]);
+
+  const corPorTipo = { overdue: 'var(--coral)', urgente: 'var(--amber)', aviso: 'var(--emerald)' };
+  painel.style.display = 'block';
+  el.innerHTML = alertas.map(a=>`
+    <div class="ticket" style="border-left-color:${corPorTipo[a.tipo]};">
+      <div class="col"><div class="title">${a.texto}</div></div>
+    </div>
+  `).join('');
+}
+
 function getMesSelecionado(){
   const input = document.getElementById('dash-mes-selecionado');
   if(!input.value) input.value = getMesAtual();
@@ -2103,6 +2356,7 @@ function getMesSelecionado(){
 }
 
 function renderDashboard(){
+  renderAlertasVencimento();
   const mesRef = getMesSelecionado();
   document.getElementById('dash-date').textContent = 'Exibindo dados de ' + formatMes(mesRef);
 
