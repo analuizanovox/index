@@ -324,11 +324,6 @@
       </div>
     </header>
 
-    <div class="panel" id="painel-alertas" style="display:none;">
-      <h2>⚠️ Alertas de vencimento</h2>
-      <div id="lista-alertas"></div>
-    </div>
-
     <div class="panel">
       <h2>Lançar gasto rápido</h2>
       <div class="form-grid">
@@ -2528,65 +2523,6 @@ function renderAssinaturas(){
 
 /* ---------------- Dashboard ---------------- */
 
-// dias até o vencimento deste mês (positivo = ainda vai vencer, 0 = vence hoje, negativo = já venceu há X dias)
-function statusVencimento(diaVenc){
-  if(!diaVenc) return null;
-  const hoje = new Date();
-  hoje.setHours(0,0,0,0);
-  const vencimentoEsteMes = new Date(hoje.getFullYear(), hoje.getMonth(), diaVenc);
-  return Math.round((vencimentoEsteMes - hoje) / 86400000);
-}
-
-function labelVencimento(dias){
-  if(dias > 1) return `vence em ${dias} dias`;
-  if(dias === 1) return 'vence amanhã';
-  if(dias === 0) return 'vence hoje';
-  return `venceu há ${Math.abs(dias)} dia(s)`;
-}
-
-function renderAlertasVencimento(){
-  const ALERTA_ANTES = 5;
-  const ALERTA_DEPOIS = 5;
-  const mesAtual = getMesAtual();
-  const alertas = [];
-
-  cartoes.forEach(c=>{
-    const dias = statusVencimento(c.vencimento);
-    if(dias === null || dias > ALERTA_ANTES || dias < -ALERTA_DEPOIS) return;
-
-    const totalCompras = compras.reduce((s,p)=> p.cardId === c.id ? s + valorAtivoNoMes(p, mesAtual) : s, 0);
-    const totalEmprestimos = emprestimos.reduce((s,e)=> e.cardId === c.id ? s + valorAtivoNoMes(e, mesAtual) : s, 0);
-    const totalAssinaturas = assinaturas.reduce((s,a)=> a.cardId === c.id ? s + valorAssinaturaNoMes(a, mesAtual) : s, 0);
-    const totalFatura = totalCompras + totalEmprestimos + totalAssinaturas;
-    if(totalFatura <= 0) return;
-
-    alertas.push({
-      tipo: dias < 0 ? 'overdue' : (dias <= 1 ? 'urgente' : 'aviso'),
-      texto: `Fatura do ${c.nome} ${labelVencimento(dias)} — ${brl(totalFatura)}`
-    });
-  });
-
-  const painel = document.getElementById('painel-alertas');
-  const el = document.getElementById('lista-alertas');
-  if(!painel || !el) return;
-
-  if(alertas.length === 0){
-    painel.style.display = 'none';
-    return;
-  }
-
-  const ordem = { overdue: 0, urgente: 1, aviso: 2 };
-  alertas.sort((a,b)=> ordem[a.tipo] - ordem[b.tipo]);
-
-  const corPorTipo = { overdue: 'var(--coral)', urgente: 'var(--amber)', aviso: 'var(--emerald)' };
-  painel.style.display = 'block';
-  el.innerHTML = alertas.map(a=>`
-    <div class="ticket" style="border-left-color:${corPorTipo[a.tipo]};">
-      <div class="col"><div class="title">${a.texto}</div></div>
-    </div>
-  `).join('');
-}
-
 function getMesSelecionado(){
   const input = document.getElementById('dash-mes-selecionado');
   if(!input.value) input.value = getMesFaturaAtual();
@@ -2594,7 +2530,6 @@ function getMesSelecionado(){
 }
 
 function renderDashboard(){
-  renderAlertasVencimento();
   const mesRef = getMesSelecionado();
   document.getElementById('dash-date').textContent = 'Exibindo a fatura de ' + formatMes(mesRef);
 
