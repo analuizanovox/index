@@ -2554,28 +2554,15 @@ function renderAlertasVencimento(){
     const dias = statusVencimento(c.vencimento);
     if(dias === null || dias > ALERTA_ANTES || dias < -ALERTA_DEPOIS) return;
 
-    const totalFatura = compras.reduce((s,p)=> p.cardId === c.id ? s + valorAtivoNoMes(p, mesAtual) : s, 0);
+    const totalCompras = compras.reduce((s,p)=> p.cardId === c.id ? s + valorAtivoNoMes(p, mesAtual) : s, 0);
+    const totalEmprestimos = emprestimos.reduce((s,e)=> e.cardId === c.id ? s + valorAtivoNoMes(e, mesAtual) : s, 0);
+    const totalAssinaturas = assinaturas.reduce((s,a)=> a.cardId === c.id ? s + valorAssinaturaNoMes(a, mesAtual) : s, 0);
+    const totalFatura = totalCompras + totalEmprestimos + totalAssinaturas;
     if(totalFatura <= 0) return;
 
     alertas.push({
       tipo: dias < 0 ? 'overdue' : (dias <= 1 ? 'urgente' : 'aviso'),
       texto: `Fatura do ${c.nome} ${labelVencimento(dias)} — ${brl(totalFatura)}`
-    });
-  });
-
-  emprestimos.forEach(e=>{
-    const info = infoParcela(e.data, e.parcelas, mesAtual);
-    if(info.quitado || info.naoIniciado || e.pagas.includes(info.parcelaAtual)) return;
-
-    const card = cartoes.find(c=>c.id===e.cardId);
-    if(!card) return;
-    const dias = statusVencimento(card.vencimento);
-    if(dias === null || dias > ALERTA_ANTES || dias < -ALERTA_DEPOIS) return;
-
-    const valorParcela = e.valor / e.parcelas;
-    alertas.push({
-      tipo: dias < 0 ? 'overdue' : (dias <= 1 ? 'urgente' : 'aviso'),
-      texto: `Parcela de ${e.pessoa} ${labelVencimento(dias)} — ${brl(valorParcela)}`
     });
   });
 
