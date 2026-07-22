@@ -507,21 +507,6 @@
     </div>
 
     <div class="panel">
-      <h2>Lançar fatura antiga (retroativa)</h2>
-      <div class="subtitle" style="margin-bottom:14px;">Pra registrar faturas de meses passados sem detalhar item por item — só o valor total, separando o que foi emprestado a alguém.</div>
-      <div class="form-grid">
-        <div><label>Cartão</label><select id="fa-cartao"></select></div>
-        <div><label>Mês/ano da fatura</label><input id="fa-mes" type="month"></div>
-        <div><label>Valor total da fatura (R$)</label><input id="fa-total" type="number" step="0.01" placeholder="0,00"></div>
-        <div><label>Valor emprestado (opcional, dentro do total acima)</label><input id="fa-emprestado" type="number" step="0.01" placeholder="0,00" oninput="toggleCampoPessoaFaturaAntiga()"></div>
-        <div id="fa-campo-pessoa" style="display:none;"><label>Nome da pessoa</label><input id="fa-pessoa" placeholder="Ex: Maria, João..."></div>
-      </div>
-      <div class="form-actions">
-        <button class="btn" onclick="salvarFaturaAntiga()">Lançar</button>
-      </div>
-    </div>
-
-    <div class="panel">
       <h2>Compras registradas</h2>
       <div class="form-grid" style="margin-bottom:18px;">
         <div><label>Buscar por descrição</label><input id="filtro-compra-busca" oninput="renderCompras()" placeholder="Ex: mercado, notebook..."></div>
@@ -585,11 +570,23 @@
         <div><label>Valor total (R$)</label><input id="e-valor" type="number" step="0.01" placeholder="0,00"></div>
         <div><label>Nº de parcelas</label><input id="e-parcelas" type="number" min="1" value="1"></div>
         <div><label>Mês da 1ª parcela</label><input id="e-data" type="month"></div>
+        <div><label>Parcelas já pagas (opcional)</label><input id="e-pagas" type="number" min="0" value="0"></div>
       </div>
       <div class="form-actions">
         <button class="btn" onclick="salvarEmprestimo()">Salvar empréstimo</button>
         <button class="btn ghost" onclick="cancelarFormEmprestimo()">Cancelar</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2>Resumo por pessoa</h2>
+      <div id="lista-resumo-pessoas"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Total do mês por cartão</h2>
+      <div class="subtitle" style="margin-bottom:14px;">Soma das parcelas de empréstimos que vencem este mês, por cartão usado</div>
+      <div id="lista-resumo-cartoes-emprestimo"></div>
     </div>
 
     <div class="panel">
@@ -1023,70 +1020,6 @@ function importarBackup(event){
   reader.readAsText(file);
 }
 
-function toggleCampoPessoaFaturaAntiga(){
-  const valor = parseFloat(document.getElementById('fa-emprestado').value) || 0;
-  document.getElementById('fa-campo-pessoa').style.display = valor > 0 ? 'block' : 'none';
-}
-
-function salvarFaturaAntiga(){
-  const cardId = document.getElementById('fa-cartao').value;
-  const mes = document.getElementById('fa-mes').value;
-  const total = parseFloat(document.getElementById('fa-total').value);
-  const emprestado = parseFloat(document.getElementById('fa-emprestado').value) || 0;
-  const pessoa = document.getElementById('fa-pessoa').value.trim();
-
-  if(!cardId){ alert('Selecione o cartão dessa fatura.'); return; }
-  if(!mes){ alert('Selecione o mês/ano da fatura.'); return; }
-  if(!total){ alert('Preencha o valor total da fatura.'); return; }
-  if(emprestado > total){ alert('O valor emprestado não pode ser maior que o total da fatura.'); return; }
-  if(emprestado > 0 && !pessoa){ alert('Preencha o nome da pessoa pra quem foi emprestado.'); return; }
-
-  const valorProprio = total - emprestado;
-  let lancamentos = 0;
-
-  if(valorProprio > 0){
-    compras.push({
-      id: uid(),
-      cardId,
-      forma: 'credito',
-      desc: 'Fatura antiga',
-      categoria: 'Outro',
-      valor: valorProprio,
-      parcelas: 1,
-      data: mes,
-      dataCompra: mes + '-01'
-    });
-    lancamentos++;
-  }
-
-  if(emprestado > 0){
-    emprestimos.push({
-      id: uid(),
-      cardId,
-      pessoa,
-      desc: 'Fatura antiga',
-      valor: emprestado,
-      parcelas: 1,
-      data: mes,
-      pagas: []
-    });
-    lancamentos++;
-  }
-
-  DB.set('ffin_compras', compras);
-  DB.set('ffin_emprestimos', emprestimos);
-  renderCompras();
-  renderEmprestimos();
-  renderDashboard();
-
-  document.getElementById('fa-total').value = '';
-  document.getElementById('fa-emprestado').value = '';
-  document.getElementById('fa-pessoa').value = '';
-  toggleCampoPessoaFaturaAntiga();
-
-  alert('Fatura antiga lançada com sucesso!');
-}
-
 /* ---------------- Navegação ---------------- */
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -1147,7 +1080,6 @@ function popularSelectCartoes(){
   document.getElementById('p-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('e-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('d-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
-  document.getElementById('fa-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
 
   const optsComTodos = '<option value="">Todos os cartões</option>' + opts;
   const filtroCompraCartao = document.getElementById('filtro-compra-cartao');
@@ -1655,6 +1587,7 @@ function preencherFormEmprestimo(e){
   document.getElementById('e-valor').value = e ? e.valor : '';
   document.getElementById('e-parcelas').value = e ? e.parcelas : 1;
   document.getElementById('e-data').value = e ? e.data : '';
+  document.getElementById('e-pagas').value = e ? e.pagas.length : 0;
 }
 
 function abrirNovoEmprestimo(){
@@ -1688,14 +1621,17 @@ function salvarEmprestimo(){
   const valor = parseFloat(document.getElementById('e-valor').value);
   const parcelas = parseInt(document.getElementById('e-parcelas').value) || 1;
   const data = document.getElementById('e-data').value || new Date().toISOString().slice(0,7);
+  let parcelasPagas = parseInt(document.getElementById('e-pagas').value) || 0;
   if(!cardId){ alert('Cadastre e selecione um cartão.'); return; }
   if(!pessoa || !valor){ alert('Preencha o nome da pessoa e o valor.'); return; }
+  if(parcelasPagas > parcelas) parcelasPagas = parcelas;
+  const pagas = Array.from({length: parcelasPagas}, (_,i)=> i+1);
 
   if(editandoEmprestimoId){
     const e = emprestimos.find(e=>e.id===editandoEmprestimoId);
-    Object.assign(e, {cardId, pessoa, desc, valor, parcelas, data});
+    Object.assign(e, {cardId, pessoa, desc, valor, parcelas, data, pagas});
   } else {
-    emprestimos.push({id: uid(), cardId, pessoa, desc, valor, parcelas, data, pagas: []});
+    emprestimos.push({id: uid(), cardId, pessoa, desc, valor, parcelas, data, pagas});
   }
   DB.set('ffin_emprestimos', emprestimos);
   editandoEmprestimoId = null;
@@ -1795,6 +1731,9 @@ function limparFiltrosEmprestimos(){
 }
 
 function renderEmprestimos(){
+  renderResumoPessoas();
+  renderResumoCartoesEmprestimo();
+
   const el = document.getElementById('lista-emprestimos');
   const filtrados = emprestimos.filter(emprestimoPassaFiltro);
 
@@ -1834,6 +1773,73 @@ function renderEmprestimos(){
       </div>
     </div>`;
   }).join('');
+}
+
+function saldoPendenteEmprestimo(e){
+  return (e.parcelas - e.pagas.length) * (e.valor / e.parcelas);
+}
+
+function renderResumoPessoas(){
+  const el = document.getElementById('lista-resumo-pessoas');
+  if(!el) return;
+
+  if(emprestimos.length===0){
+    el.innerHTML = '<div class="empty">Nenhum empréstimo registrado ainda.</div>';
+    return;
+  }
+
+  const porPessoa = {};
+  emprestimos.forEach(e=>{
+    const chave = e.pessoa;
+    if(!porPessoa[chave]) porPessoa[chave] = { total: 0, pendente: 0, itens: 0 };
+    porPessoa[chave].total += e.valor;
+    porPessoa[chave].pendente += saldoPendenteEmprestimo(e);
+    porPessoa[chave].itens += 1;
+  });
+
+  const pessoas = Object.keys(porPessoa).sort((a,b)=> porPessoa[b].pendente - porPessoa[a].pendente);
+
+  el.innerHTML = pessoas.map(nome=>{
+    const info = porPessoa[nome];
+    const status = info.pendente > 0 ? 'pending' : 'ok';
+    return `
+    <div class="ticket ${status}">
+      <div class="col">
+        <div class="title">${nome}</div>
+        <div class="meta">${info.itens} empréstimo(s) · total geral ${brl(info.total)}</div>
+      </div>
+      <div class="amount">${brl(info.pendente)}<div style="font-size:11px; color:var(--muted); font-weight:400;">ainda pendente</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderResumoCartoesEmprestimo(){
+  const el = document.getElementById('lista-resumo-cartoes-emprestimo');
+  if(!el) return;
+
+  const mesAtual = getMesAtual();
+  const porCartao = {};
+  emprestimos.forEach(e=>{
+    const valor = valorAtivoNoMes(e, mesAtual);
+    if(valor > 0){
+      porCartao[e.cardId] = (porCartao[e.cardId] || 0) + valor;
+    }
+  });
+
+  const cardIds = Object.keys(porCartao);
+  if(cardIds.length === 0){
+    el.innerHTML = '<div class="empty">Nenhuma parcela de empréstimo ativa este mês.</div>';
+    return;
+  }
+
+  el.innerHTML = cardIds.map(id=>`
+    <div class="ticket">
+      <div class="col">
+        <div class="title"><span class="card-color-dot" style="background:${corCartao(id)}"></span>${nomeCartao(id)}</div>
+      </div>
+      <div class="amount">${brl(porCartao[id])}</div>
+    </div>
+  `).join('');
 }
 
 /* ---------------- Dinheiro guardado (cofrinhos) ---------------- */
