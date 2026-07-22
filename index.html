@@ -573,6 +573,10 @@
         <div><label>Mês da 1ª parcela</label><input id="e-data" type="month"></div>
         <div><label>Parcelas já pagas (opcional)</label><input id="e-pagas" type="number" min="0" value="0"></div>
       </div>
+      <div class="subtitle" style="margin-top:10px;">
+        💡 O campo "Mês da 1ª parcela" precisa ser a data real do início. Se você não sabe essa data mas sabe o mês em que a <strong>próxima</strong> parcela vence, preencha esse mês ali, o número de parcelas já pagas ao lado, e clique aqui:
+      </div>
+      <button class="btn ghost small" style="margin-top:8px;" onclick="calcularMesInicialEmprestimo()">Calcular mês da 1ª parcela</button>
       <div class="form-actions">
         <button class="btn" onclick="salvarEmprestimo()">Salvar empréstimo</button>
         <button class="btn ghost" onclick="cancelarFormEmprestimo()">Cancelar</button>
@@ -1354,6 +1358,18 @@ function cancelarFormCompra(){
   toggleForm('form-compra');
 }
 
+// determina em qual mês de fatura uma compra cai, considerando o dia de fechamento do cartão
+// (compras feitas depois do fechamento entram na fatura do mês seguinte)
+function mesFaturaParaCompra(dataCompraStr, cardId){
+  const card = cartoes.find(c=>c.id===cardId);
+  const [y, m, d] = dataCompraStr.split('-').map(Number);
+  if(!card || !card.fechamento || d <= card.fechamento){
+    return `${y}-${String(m).padStart(2,'0')}`;
+  }
+  const proximo = new Date(y, m, 1); // m (1-indexed) como parâmetro de mês (0-indexed) já avança 1 mês
+  return `${proximo.getFullYear()}-${String(proximo.getMonth()+1).padStart(2,'0')}`;
+}
+
 function lancarGasto(prefix, editId){
   const forma = document.getElementById(prefix+'-forma').value;
   const ehCredito = (forma === 'credito');
@@ -1370,13 +1386,13 @@ function lancarGasto(prefix, editId){
   if(ehRapido(categoria)){
     desc = categoria;
     parcelas = 1;
-    data = dataCompra.slice(0,7);
+    data = ehCredito ? mesFaturaParaCompra(dataCompra, cardId) : dataCompra.slice(0,7);
   } else {
     desc = document.getElementById(prefix+'-desc').value.trim();
     if(!desc){ alert('Preencha a descrição.'); return false; }
     if(ehCredito){
       parcelas = parseInt(document.getElementById(prefix+'-parcelas').value) || 1;
-      data = document.getElementById(prefix+'-data').value || dataCompra.slice(0,7);
+      data = document.getElementById(prefix+'-data').value || mesFaturaParaCompra(dataCompra, cardId);
     } else {
       parcelas = 1;
       data = dataCompra.slice(0,7);
@@ -1674,6 +1690,15 @@ function cancelarFormEmprestimo(){
   document.getElementById('form-emprestimo-titulo').textContent = 'Novo empréstimo de cartão';
   preencherFormEmprestimo(null);
   toggleForm('form-emprestimo');
+}
+
+function calcularMesInicialEmprestimo(){
+  const dataEl = document.getElementById('e-data');
+  const parcelasPagas = parseInt(document.getElementById('e-pagas').value) || 0;
+  if(!dataEl.value){ alert('Preencha o mês da próxima parcela a vencer no campo "Mês da 1ª parcela" primeiro.'); return; }
+  if(parcelasPagas <= 0){ alert('Informe quantas parcelas já foram pagas.'); return; }
+  dataEl.value = somarMeses(dataEl.value, -parcelasPagas);
+  alert(`Pronto! Ajustamos o mês da 1ª parcela para ${formatMes(dataEl.value)}. Confira e clique em "Salvar empréstimo".`);
 }
 
 function salvarEmprestimo(){
