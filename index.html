@@ -1207,7 +1207,9 @@ function renderCartoes(){
 
   const mesAtual = getMesAtual();
   el.innerHTML = cartoes.map(c=>{
-    const usado = compras.filter(p=>p.cardId===c.id).reduce((s,p)=>s+valorComprometido(p, mesAtual), 0);
+    const usadoCompras = compras.filter(p=>p.cardId===c.id).reduce((s,p)=>s+valorComprometido(p, mesAtual), 0);
+    const usadoEmprestimos = emprestimos.filter(e=>e.cardId===c.id).reduce((s,e)=>s+valorComprometido(e, mesAtual), 0);
+    const usado = usadoCompras + usadoEmprestimos;
     const pct = c.limite > 0 ? Math.min(100, Math.round((usado/c.limite)*100)) : 0;
     const corBarra = pct >= 90 ? 'var(--coral)' : (pct >= 60 ? 'var(--amber)' : 'var(--emerald)');
     return `
@@ -1216,7 +1218,7 @@ function renderCartoes(){
         <div class="title"><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</div>
         <div class="meta">${c.banco||'—'} · fecha dia ${c.fechamento||'?'} · vence dia ${c.vencimento||'?'}</div>
         <div class="limit-bar"><div class="limit-bar-fill" style="width:${pct}%; background:${corBarra}"></div></div>
-        <div class="meta" style="margin-top:5px;">${brl(usado)} comprometido de ${brl(c.limite)} (${pct}%)</div>
+        <div class="meta" style="margin-top:5px;">${brl(usado)} comprometido de ${brl(c.limite)} (${pct}%)${usadoEmprestimos>0 ? ` — inclui ${brl(usadoEmprestimos)} de empréstimos a terceiros` : ''}</div>
       </div>
       <div class="amount">${brl(c.limite)}</div>
       <div class="actions">
@@ -1639,6 +1641,7 @@ function salvarEmprestimo(){
   preencherFormEmprestimo(null);
   toggleForm('form-emprestimo');
   renderEmprestimos();
+  renderCartoes();
   renderDashboard();
 }
 
@@ -1647,6 +1650,8 @@ function removerEmprestimo(id){
   emprestimos = emprestimos.filter(e=>e.id!==id);
   DB.set('ffin_emprestimos', emprestimos);
   renderEmprestimos();
+  renderCartoes();
+  renderDashboard();
 }
 
 function marcarParcelaPaga(id, parcelaNum){
@@ -1788,27 +1793,33 @@ function renderResumoPessoas(){
     return;
   }
 
+  const mesAtual = getMesAtual();
   const porPessoa = {};
   emprestimos.forEach(e=>{
     const chave = e.pessoa;
-    if(!porPessoa[chave]) porPessoa[chave] = { total: 0, pendente: 0, itens: 0 };
+    if(!porPessoa[chave]) porPessoa[chave] = { total: 0, pendente: 0, itens: 0, esteMes: 0 };
     porPessoa[chave].total += e.valor;
     porPessoa[chave].pendente += saldoPendenteEmprestimo(e);
     porPessoa[chave].itens += 1;
+
+    const info = infoParcela(e.data, e.parcelas, mesAtual);
+    if(!info.quitado && !info.naoIniciado && !e.pagas.includes(info.parcelaAtual)){
+      porPessoa[chave].esteMes += valorAtivoNoMes(e, mesAtual);
+    }
   });
 
-  const pessoas = Object.keys(porPessoa).sort((a,b)=> porPessoa[b].pendente - porPessoa[a].pendente);
+  const pessoas = Object.keys(porPessoa).sort((a,b)=> porPessoa[b].esteMes - porPessoa[a].esteMes);
 
   el.innerHTML = pessoas.map(nome=>{
     const info = porPessoa[nome];
-    const status = info.pendente > 0 ? 'pending' : 'ok';
+    const status = info.esteMes > 0 ? 'pending' : 'ok';
     return `
     <div class="ticket ${status}">
       <div class="col">
         <div class="title">${nome}</div>
-        <div class="meta">${info.itens} empréstimo(s) · total geral ${brl(info.total)}</div>
+        <div class="meta">${info.itens} empréstimo(s) · total geral ${brl(info.total)} · ainda pendente ${brl(info.pendente)}</div>
       </div>
-      <div class="amount">${brl(info.pendente)}<div style="font-size:11px; color:var(--muted); font-weight:400;">ainda pendente</div></div>
+      <div class="amount">${brl(info.esteMes)}<div style="font-size:11px; color:var(--muted); font-weight:400;">a pagar este mês</div></div>
     </div>`;
   }).join('');
 }
