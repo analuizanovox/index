@@ -298,6 +298,7 @@
     <button class="nav-btn" data-page="faturas">📑 Faturas por Cartão</button>
     <button class="nav-btn" data-page="uber">🚗 Uber</button>
     <button class="nav-btn" data-page="construir"><img id="logo-construir-nav" style="height:18px; vertical-align:middle; margin-right:2px; border-radius:3px;"> Gastos Construir</button>
+    <button class="nav-btn" data-page="assinaturas">🔁 Assinaturas</button>
 
     <div class="nav-section-label">Pessoas &amp; metas</div>
     <button class="nav-btn" data-page="emprestimos">🤝 Empréstimos a terceiros</button>
@@ -635,6 +636,53 @@
     </div>
   </section>
 
+  <!-- ASSINATURAS -->
+  <section class="page" id="page-assinaturas">
+    <header class="page-head">
+      <div>
+        <h1>Assinaturas</h1>
+        <div class="subtitle">Gastos recorrentes que se repetem todo mês automaticamente</div>
+      </div>
+      <button class="btn" onclick="abrirNovaAssinatura()">+ Nova assinatura</button>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat" style="--accent: var(--emerald)">
+        <div class="label">Total mensal em assinaturas ativas</div>
+        <div class="value" id="stat-assinaturas-total">R$ 0,00</div>
+        <div class="hint" id="stat-assinaturas-hint">0 assinatura(s) ativa(s)</div>
+      </div>
+    </div>
+
+    <div class="panel" id="form-assinatura" style="display:none;">
+      <h2 id="form-assinatura-titulo">Nova assinatura</h2>
+      <div class="form-grid">
+        <div><label>Nome</label><input id="as-nome" placeholder="Ex: Netflix, Academia, Spotify..."></div>
+        <div>
+          <label>Forma de pagamento</label>
+          <select id="as-forma" onchange="toggleCampoCartaoAssinatura()">
+            <option value="credito">Cartão de Crédito</option>
+            <option value="debito">Débito</option>
+            <option value="pix">Pix</option>
+          </select>
+        </div>
+        <div id="as-campo-cartao"><label>Cartão</label><select id="as-cartao"></select></div>
+        <div><label>Tipo de gasto</label><select id="as-categoria"></select></div>
+        <div><label>Valor mensal (R$)</label><input id="as-valor" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Mês de início</label><input id="as-mes-inicio" type="month"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="salvarAssinatura()">Salvar assinatura</button>
+        <button class="btn ghost" onclick="cancelarFormAssinatura()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Minhas assinaturas</h2>
+      <div id="lista-assinaturas"></div>
+    </div>
+  </section>
+
   <!-- DINHEIRO GUARDADO -->
   <section class="page" id="page-guardado">
     <header class="page-head">
@@ -806,6 +854,7 @@ let emprestimos = DB.get('ffin_emprestimos');
 let cofres = DB.get('ffin_cofres');
 let movimentacoesGuardado = DB.get('ffin_movs_guardado');
 let itensDesejo = DB.get('ffin_desejos');
+let assinaturas = DB.get('ffin_assinaturas');
 
 /* ---------------- Categorias de gasto ---------------- */
 const CATEGORIAS_PROTEGIDAS = ['Uber KNN','Uber LAH','Uber Outros','Uber Construir'];
@@ -824,6 +873,7 @@ function popularSelectsCategoria(){
   const opts = todas.map(c=>`<option value="${c}">${c === 'Outro' ? 'Outro (compra normal)' : c}</option>`).join('');
   document.getElementById('p-categoria').innerHTML = opts;
   document.getElementById('d-categoria').innerHTML = opts;
+  document.getElementById('as-categoria').innerHTML = opts;
 
   const filtroCategoria = document.getElementById('filtro-compra-categoria');
   if(filtroCategoria){
@@ -849,7 +899,7 @@ function atualizarStatusSync(texto){
 }
 
 function coletarEstadoCompleto(){
-  return { cartoes, compras, emprestimos, cofres, movimentacoesGuardado, itensDesejo, categoriasGasto };
+  return { cartoes, compras, emprestimos, cofres, movimentacoesGuardado, itensDesejo, categoriasGasto, assinaturas };
 }
 
 function aplicarEstadoCompleto(dados){
@@ -860,6 +910,7 @@ function aplicarEstadoCompleto(dados){
   movimentacoesGuardado = Array.isArray(dados.movimentacoesGuardado) ? dados.movimentacoesGuardado : [];
   itensDesejo = Array.isArray(dados.itensDesejo) ? dados.itensDesejo : [];
   categoriasGasto = (Array.isArray(dados.categoriasGasto) && dados.categoriasGasto.length) ? dados.categoriasGasto : categoriasGasto;
+  assinaturas = Array.isArray(dados.assinaturas) ? dados.assinaturas : [];
 
   localStorage.setItem('ffin_cartoes', JSON.stringify(cartoes));
   localStorage.setItem('ffin_compras', JSON.stringify(compras));
@@ -868,6 +919,7 @@ function aplicarEstadoCompleto(dados){
   localStorage.setItem('ffin_movs_guardado', JSON.stringify(movimentacoesGuardado));
   localStorage.setItem('ffin_desejos', JSON.stringify(itensDesejo));
   localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+  localStorage.setItem('ffin_assinaturas', JSON.stringify(assinaturas));
 }
 
 let syncTimeout = null;
@@ -954,7 +1006,7 @@ function exportarBackup(){
   const dados = {
     versao: 1,
     exportadoEm: new Date().toISOString(),
-    cartoes, compras, emprestimos, cofres, movimentacoesGuardado, itensDesejo, categoriasGasto
+    cartoes, compras, emprestimos, cofres, movimentacoesGuardado, itensDesejo, categoriasGasto, assinaturas
   };
   const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -993,6 +1045,7 @@ function importarBackup(event){
       movimentacoesGuardado = Array.isArray(dados.movimentacoesGuardado) ? dados.movimentacoesGuardado : [];
       itensDesejo = Array.isArray(dados.itensDesejo) ? dados.itensDesejo : [];
       categoriasGasto = Array.isArray(dados.categoriasGasto) ? dados.categoriasGasto : categoriasGasto;
+      assinaturas = Array.isArray(dados.assinaturas) ? dados.assinaturas : [];
       DB.set('ffin_cartoes', cartoes);
       DB.set('ffin_compras', compras);
       DB.set('ffin_emprestimos', emprestimos);
@@ -1000,6 +1053,7 @@ function importarBackup(event){
       DB.set('ffin_movs_guardado', movimentacoesGuardado);
       DB.set('ffin_desejos', itensDesejo);
       localStorage.setItem('ffin_categorias', JSON.stringify(categoriasGasto));
+      localStorage.setItem('ffin_assinaturas', JSON.stringify(assinaturas));
       agendarSincronizacao();
 
       renderCartoes();
@@ -1010,6 +1064,7 @@ function importarBackup(event){
       renderDesejos();
       popularSelectsCategoria();
       renderTiposGasto();
+      renderAssinaturas();
       renderDashboard();
       alert('Backup importado com sucesso!');
     } catch(err){
@@ -1080,6 +1135,7 @@ function popularSelectCartoes(){
   document.getElementById('p-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('e-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
   document.getElementById('d-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
+  document.getElementById('as-cartao').innerHTML = opts || '<option value="">Cadastre um cartão primeiro</option>';
 
   const optsComTodos = '<option value="">Todos os cartões</option>' + opts;
   const filtroCompraCartao = document.getElementById('filtro-compra-cartao');
@@ -1209,16 +1265,20 @@ function renderCartoes(){
   el.innerHTML = cartoes.map(c=>{
     const usadoCompras = compras.filter(p=>p.cardId===c.id).reduce((s,p)=>s+valorComprometido(p, mesAtual), 0);
     const usadoEmprestimos = emprestimos.filter(e=>e.cardId===c.id).reduce((s,e)=>s+valorComprometido(e, mesAtual), 0);
-    const usado = usadoCompras + usadoEmprestimos;
+    const usadoAssinaturas = assinaturas.filter(a=>a.cardId===c.id).reduce((s,a)=>s+valorAssinaturaNoMes(a, mesAtual), 0);
+    const usado = usadoCompras + usadoEmprestimos + usadoAssinaturas;
     const pct = c.limite > 0 ? Math.min(100, Math.round((usado/c.limite)*100)) : 0;
     const corBarra = pct >= 90 ? 'var(--coral)' : (pct >= 60 ? 'var(--amber)' : 'var(--emerald)');
+    const extras = [];
+    if(usadoEmprestimos>0) extras.push(`${brl(usadoEmprestimos)} de empréstimos a terceiros`);
+    if(usadoAssinaturas>0) extras.push(`${brl(usadoAssinaturas)} de assinaturas`);
     return `
     <div class="ticket">
       <div class="col">
         <div class="title"><span class="card-color-dot" style="background:${c.cor}"></span>${c.nome}</div>
         <div class="meta">${c.banco||'—'} · fecha dia ${c.fechamento||'?'} · vence dia ${c.vencimento||'?'}</div>
         <div class="limit-bar"><div class="limit-bar-fill" style="width:${pct}%; background:${corBarra}"></div></div>
-        <div class="meta" style="margin-top:5px;">${brl(usado)} comprometido de ${brl(c.limite)} (${pct}%)${usadoEmprestimos>0 ? ` — inclui ${brl(usadoEmprestimos)} de empréstimos a terceiros` : ''}</div>
+        <div class="meta" style="margin-top:5px;">${brl(usado)} comprometido de ${brl(c.limite)} (${pct}%)${extras.length ? ` — inclui ${extras.join(' e ')}` : ''}</div>
       </div>
       <div class="amount">${brl(c.limite)}</div>
       <div class="actions">
@@ -2292,6 +2352,145 @@ function renderTiposGasto(){
   }).join('');
 }
 
+/* ---------------- Assinaturas (gastos recorrentes) ---------------- */
+let editandoAssinaturaId = null;
+
+// valor da assinatura num mês específico (0 se ainda não começou ou já foi cancelada antes desse mês)
+function valorAssinaturaNoMes(a, mesRef){
+  if(mesRef < a.mesInicio) return 0;
+  if(!a.ativa && a.mesCancelamento && mesRef >= a.mesCancelamento) return 0;
+  return a.valor;
+}
+
+function toggleCampoCartaoAssinatura(){
+  const forma = document.getElementById('as-forma').value;
+  document.getElementById('as-campo-cartao').style.display = (forma === 'credito') ? 'block' : 'none';
+}
+
+function preencherFormAssinatura(a){
+  document.getElementById('as-nome').value = a ? a.desc : '';
+  document.getElementById('as-forma').value = a ? formaDoItem(a) : 'credito';
+  document.getElementById('as-cartao').value = a ? (a.cardId || '') : '';
+  document.getElementById('as-categoria').value = a ? a.categoria : 'Outro';
+  document.getElementById('as-valor').value = a ? a.valor : '';
+  document.getElementById('as-mes-inicio').value = a ? a.mesInicio : getMesAtual();
+  toggleCampoCartaoAssinatura();
+}
+
+function abrirNovaAssinatura(){
+  editandoAssinaturaId = null;
+  document.getElementById('form-assinatura-titulo').textContent = 'Nova assinatura';
+  preencherFormAssinatura(null);
+  document.getElementById('form-assinatura').style.display = 'block';
+}
+
+function editarAssinatura(id){
+  const a = assinaturas.find(a=>a.id===id);
+  if(!a) return;
+  editandoAssinaturaId = id;
+  document.getElementById('form-assinatura-titulo').textContent = 'Editar assinatura';
+  preencherFormAssinatura(a);
+  document.getElementById('form-assinatura').style.display = 'block';
+  document.getElementById('form-assinatura').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelarFormAssinatura(){
+  editandoAssinaturaId = null;
+  document.getElementById('form-assinatura-titulo').textContent = 'Nova assinatura';
+  preencherFormAssinatura(null);
+  toggleForm('form-assinatura');
+}
+
+function salvarAssinatura(){
+  const desc = document.getElementById('as-nome').value.trim();
+  const forma = document.getElementById('as-forma').value;
+  const cardId = (forma === 'credito') ? document.getElementById('as-cartao').value : null;
+  const categoria = document.getElementById('as-categoria').value;
+  const valor = parseFloat(document.getElementById('as-valor').value);
+  const mesInicio = document.getElementById('as-mes-inicio').value || getMesAtual();
+
+  if(!desc){ alert('Dê um nome à assinatura.'); return; }
+  if(forma === 'credito' && !cardId){ alert('Selecione o cartão dessa assinatura.'); return; }
+  if(!valor){ alert('Preencha o valor mensal.'); return; }
+
+  if(editandoAssinaturaId){
+    const a = assinaturas.find(a=>a.id===editandoAssinaturaId);
+    Object.assign(a, {desc, forma, cardId, categoria, valor, mesInicio});
+  } else {
+    assinaturas.push({id: uid(), desc, forma, cardId, categoria, valor, mesInicio, ativa: true, mesCancelamento: null});
+  }
+  DB.set('ffin_assinaturas', assinaturas);
+  cancelarFormAssinatura();
+  renderAssinaturas();
+  renderDashboard();
+}
+
+function pausarAssinatura(id){
+  const a = assinaturas.find(a=>a.id===id);
+  if(!a) return;
+  if(!confirm(`Cancelar a assinatura "${a.desc}"? Ela deixa de ser lançada a partir do mês atual (os meses anteriores continuam registrados).`)) return;
+  a.ativa = false;
+  a.mesCancelamento = getMesAtual();
+  DB.set('ffin_assinaturas', assinaturas);
+  renderAssinaturas();
+  renderDashboard();
+}
+
+function reativarAssinatura(id){
+  const a = assinaturas.find(a=>a.id===id);
+  if(!a) return;
+  a.ativa = true;
+  a.mesCancelamento = null;
+  DB.set('ffin_assinaturas', assinaturas);
+  renderAssinaturas();
+  renderDashboard();
+}
+
+function removerAssinatura(id){
+  if(!confirm('Excluir esta assinatura permanentemente?')) return;
+  assinaturas = assinaturas.filter(a=>a.id!==id);
+  DB.set('ffin_assinaturas', assinaturas);
+  renderAssinaturas();
+  renderDashboard();
+}
+
+function renderAssinaturas(){
+  const el = document.getElementById('lista-assinaturas');
+  if(!el) return;
+
+  const mesAtual = getMesAtual();
+  const ativas = assinaturas.filter(a=>a.ativa && valorAssinaturaNoMes(a, mesAtual) > 0);
+  const totalMensal = ativas.reduce((s,a)=>s+a.valor, 0);
+
+  const elTotal = document.getElementById('stat-assinaturas-total');
+  const elHint = document.getElementById('stat-assinaturas-hint');
+  if(elTotal) elTotal.textContent = brl(totalMensal);
+  if(elHint) elHint.textContent = `${ativas.length} assinatura(s) ativa(s)`;
+
+  if(assinaturas.length===0){
+    el.innerHTML = '<div class="empty">Nenhuma assinatura cadastrada ainda.</div>';
+    return;
+  }
+
+  el.innerHTML = assinaturas.slice().reverse().map(a=>{
+    const status = a.ativa ? 'ok' : 'pending';
+    return `
+    <div class="ticket ${status}">
+      <div class="col">
+        <div class="title">${a.desc} <span class="badge" style="margin-left:6px;">${a.categoria||'Sem tipo'}</span></div>
+        <div class="meta">${labelOrigemPagamento(a)} · desde ${formatMes(a.mesInicio)}${!a.ativa ? ' · cancelada em '+formatMes(a.mesCancelamento) : ''}</div>
+      </div>
+      <div class="badge">${a.ativa ? 'Ativa' : 'Cancelada'}</div>
+      <div class="amount">${brl(a.valor)}/mês</div>
+      <div class="actions">
+        ${a.ativa ? `<button class="btn ghost small" onclick="pausarAssinatura('${a.id}')">Cancelar</button>` : `<button class="btn small" onclick="reativarAssinatura('${a.id}')">Reativar</button>`}
+        <button class="btn ghost small" onclick="editarAssinatura('${a.id}')">Editar</button>
+        <button class="btn danger small" onclick="removerAssinatura('${a.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 /* ---------------- Dashboard ---------------- */
 
 // dias até o vencimento deste mês (positivo = ainda vai vencer, 0 = vence hoje, negativo = já venceu há X dias)
@@ -2377,7 +2576,7 @@ function renderDashboard(){
   const mesRef = getMesSelecionado();
   document.getElementById('dash-date').textContent = 'Exibindo dados de ' + formatMes(mesRef);
 
-  // Gasto do mês selecionado (compras próprias)
+  // Gasto do mês selecionado (compras próprias + assinaturas ativas)
   let totalMes = 0;
   let totalDebitoPix = 0;
   const porCartao = {};
@@ -2389,6 +2588,17 @@ function renderDashboard(){
         porCartao[p.cardId] = (porCartao[p.cardId]||0) + valorParcela;
       } else {
         totalDebitoPix += valorParcela;
+      }
+    }
+  });
+  assinaturas.forEach(a=>{
+    const valor = valorAssinaturaNoMes(a, mesRef);
+    if(valor > 0){
+      totalMes += valor;
+      if(a.cardId){
+        porCartao[a.cardId] = (porCartao[a.cardId]||0) + valor;
+      } else {
+        totalDebitoPix += valor;
       }
     }
   });
@@ -2525,6 +2735,13 @@ function renderGraficos(mesRef){
       porCategoria[cat] = (porCategoria[cat]||0) + valor;
     }
   });
+  assinaturas.forEach(a=>{
+    const valor = valorAssinaturaNoMes(a, mesRef);
+    if(valor > 0){
+      const cat = a.categoria || 'Outro';
+      porCategoria[cat] = (porCategoria[cat]||0) + valor;
+    }
+  });
 
   const catLabels = Object.keys(porCategoria);
   const catValues = catLabels.map(c=>porCategoria[c]);
@@ -2562,7 +2779,7 @@ function renderGraficosPorCartao(mesRef){
   Object.values(chartsPorCartao).forEach(ch => ch && ch.destroy());
   chartsPorCartao = {};
 
-  const temDebitoPix = compras.some(p => !p.cardId);
+  const temDebitoPix = compras.some(p => !p.cardId) || assinaturas.some(a => !a.cardId);
   const grupos = [...cartoes];
   if(temDebitoPix){
     grupos.push({ id: '__debito_pix__', nome: 'Débito & Pix', cor: '#7aa6d1', virtual: true });
@@ -2585,11 +2802,19 @@ function renderGraficosPorCartao(mesRef){
 
   grupos.forEach(c=>{
     const itens = c.virtual ? compras.filter(p=>!p.cardId) : compras.filter(p=>p.cardId===c.id);
+    const assinaturasCartao = c.virtual ? assinaturas.filter(a=>!a.cardId) : assinaturas.filter(a=>a.cardId===c.id);
     const porCategoria = {};
     itens.forEach(p=>{
       const valor = valorAtivoNoMes(p, mesRef);
       if(valor > 0){
         const cat = p.categoria || 'Outro';
+        porCategoria[cat] = (porCategoria[cat]||0) + valor;
+      }
+    });
+    assinaturasCartao.forEach(a=>{
+      const valor = valorAssinaturaNoMes(a, mesRef);
+      if(valor > 0){
+        const cat = a.categoria || 'Outro';
         porCategoria[cat] = (porCategoria[cat]||0) + valor;
       }
     });
@@ -2630,7 +2855,9 @@ function renderGastosFuturos(mesRef){
   for(let i=0;i<QTD_MESES;i++){ meses.push(somarMeses(mesRef, i)); }
 
   const valores = meses.map(mes=>{
-    return compras.reduce((s,p)=> s + valorAtivoNoMes(p, mes), 0);
+    const totalCompras = compras.reduce((s,p)=> s + valorAtivoNoMes(p, mes), 0);
+    const totalAssinaturas = assinaturas.reduce((s,a)=> s + valorAssinaturaNoMes(a, mes), 0);
+    return totalCompras + totalAssinaturas;
   });
   const labels = meses.map(formatMes);
 
@@ -2666,6 +2893,7 @@ function renderTudo(){
   renderMovimentacoes();
   renderDesejos();
   renderTiposGasto();
+  renderAssinaturas();
   renderDashboard();
 }
 
@@ -2705,6 +2933,7 @@ async function inicializarApp(){
   renderTudo();
   toggleCamposCompra();
   toggleCamposDashboard();
+  toggleCampoCartaoAssinatura();
 }
 
 inicializarApp();
